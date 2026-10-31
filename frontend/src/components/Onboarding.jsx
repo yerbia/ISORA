@@ -43,7 +43,7 @@ function OnboardingChat() {
   const [restoring, setRestoring] = useState(false)
   const mode = useRef('ai')
   const [picked, setPicked] = useState(() => !!cleanBuddy(S.buddy).kind)
-  const [welcomed, setWelcomed] = useState(() => !!cleanBuddy(S.buddy).kind)   // the welcome screens come before meeting Iso
+  const [welcomed, setWelcomed] = useState(() => !!cleanBuddy(S.buddy).kind)   // the welcome screens come before meeting Trino
   const buddy = cleanBuddy(S.buddy)
   const history = useRef(null)
   const root = useRef(null)
@@ -225,7 +225,7 @@ function OnboardingChat() {
       <button type="button" className="ob-skip" onClick={skip}>{t('Skip')}</button>
     </div>
     <div className="ob-thread ob-pick">
-      <p className="ob-pick-intro">{t('This is Iso, your ISORA buddy. Iso cheers you on, keeps an eye on your week and grows as you train.')}</p>
+  <p className="ob-pick-intro">Este es Trino, tu compañero de Entren.ar. Trino te anima, vigila tu semana y crece contigo al entrenar.</p>
       <BuddyPicker onDone={() => { update(s => { s.buddy = { ...cleanBuddy(s.buddy), kind: KIND, name: DEFAULT_NAME, born: todayISO(), level: currentLevel() } }); setPicked(true) }} />
     </div>
   </div>

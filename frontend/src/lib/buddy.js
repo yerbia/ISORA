@@ -7,7 +7,7 @@
 // reads as Iso.
 export const KIND = 'block'
 export const KIND_COLOR = 'var(--acc)'
-export const DEFAULT_NAME = 'Iso'
+export const DEFAULT_NAME = 'Trino'
 
 export const emptyBuddy = () => ({ kind: null, name: '', born: null, level: 1, line: null })
 

@@ -9,7 +9,7 @@ import Icon from '../components/Icon.jsx'
 import IsoraMark from '../components/IsoraMark.jsx'
 import { Button } from '../components/ui.jsx'
 
-function AccountForm({ mode, onMode }) {
+export function AccountForm({ mode, onMode }) {
   const { setUser, pullState, pushState } = useStore()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')

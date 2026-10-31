@@ -42,6 +42,7 @@ import { starterPlanSheet, confirmSheet, importFromApp, importFromHevy, equipmen
 import Icon from '../components/Icon.jsx'
 import { oweTours } from '../components/Tour.jsx'
 import { showWelcome } from '../components/Welcome.jsx'
+import { AccountForm } from './Login.jsx'
 import { deviceOf, canPromptInstall, promptInstall, installState } from '../lib/install.js'
 import { durationSheet } from '../components/DurationWheel.jsx'
 import { showsConnection, showsLocalLine } from '../components/SyncBanner.jsx'
@@ -78,6 +79,14 @@ export function SettingsRoute() {
 // "Mon" / "Sun" in the app's language, for the Plan & schedule row's preview.
 const shortWeekday = day => {
   try { return new Intl.DateTimeFormat(dateLocale(), { weekday: 'short' }).format(new Date(2024, 0, day === 0 ? 7 : 1)) } catch { return day === 0 ? 'Sun' : 'Mon' }
+}
+
+function AccountAccessSheet() {
+  const [mode, setMode] = useState('signin')
+  return <>
+    <h3>{mode === 'signup' ? 'Crear una cuenta' : 'Iniciar sesión'}</h3>
+    <AccountForm mode={mode} onMode={setMode} />
+  </>
 }
 
 // Running as an installed app (home-screen web app or the phone app): no install tip then.
@@ -842,7 +851,7 @@ export default function Settings({ page = null, find = null, via = null }) {
         <Row icon="info" iconTint="var(--grey)" title={t('Version')} value={'v' + __APP_VERSION__} />
         {MOBILE
           ? android && <Row icon="download" iconTint="var(--green)"
-              title={updateInfo?.hasUpdate ? t('Update to ISORA v{0}', updateInfo.latestVersion) : t('Check for updates')}
+              title={updateInfo?.hasUpdate ? `Actualizar a ENTREN.AR v${updateInfo.latestVersion}` : t('Check for updates')}
               subtitle={checking ? t('Checking…') : t('You have v{0}', __APP_VERSION__)}
               accessory="chevron"
               onClick={() => (updateInfo?.hasUpdate ? onUpdateRowClick() : checkNow())} />
@@ -860,7 +869,7 @@ export default function Settings({ page = null, find = null, via = null }) {
           build there is no address bar and no about box, so without this there is no way to tell
           which build you are running, or whether an update actually installed. */}
       <div className="dim small sp-version">
-        ISORA v{__APP_VERSION__} · {t('free & open source (AGPL v3)')}<br />
+        ENTREN.AR v{__APP_VERSION__} · {t('free & open source (AGPL v3)')}<br />
         <a href="https://github.com/Nchaudry123/ISORA" target="_blank" rel="noopener">{t('Source code')}</a><br />
         {/* AGPL attribution: ISORA is a modified openGym. Kept in English like the media line. */}
         Built on <a href="https://github.com/DuarteSantos8/openGym" target="_blank" rel="noopener">openGym</a> by Duarte Santos.<br />
@@ -904,7 +913,8 @@ export default function Settings({ page = null, find = null, via = null }) {
           <Row icon="shield" iconTint="var(--red)" title={t('Sign out everywhere')} subtitle={t('Ends this profile’s sessions on all your devices.')} danger onClick={signOutEverywhere} />
           <AccountIdRow id={user.id} />
         </> : <>
-          <Row icon="lock" iconTint="var(--grey)" title={t('Use the sign-in screen to connect your account.')} />
+          <Row icon="person" iconTint="var(--acc)" title="Iniciar sesión con email o Google" subtitle="Mantén tu perfil y tus entrenamientos disponibles en todos tus dispositivos." accessory="chevron"
+            onClick={() => useUI.getState().openSheet(close => <AccountAccessSheet />)} />
           <KeptChangesRows />
         </>}
       </Section>}
@@ -984,7 +994,7 @@ function SettingsRoot({ ctx, preview, open, user, sync, home, go }) {
             value={preview[id]?.() || null} accessory="chevron" onClick={() => open(id)} className="sp-root-row" />)}
         </Section>
       ))}
-      <div className="dim small sp-version">ISORA v{__APP_VERSION__}</div>
+      <div className="dim small sp-version">ENTREN.AR v{__APP_VERSION__}</div>
     </>}
   </div>
 }
