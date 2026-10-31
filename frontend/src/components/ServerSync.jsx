@@ -15,13 +15,16 @@ import { askAddDeviceData, menuSheet } from '../sheets.jsx'
 import { ConnectSheet, CfAccessSheet } from '../views/MobileOnboarding.jsx'
 import { passwordOn, openPasswordSignIn } from './PasswordAuth.jsx'
 import { Section, Row, Button } from './ui.jsx'
+import { AccountForm } from '../views/Login.jsx'
 
 const ui = () => useUI.getState()
 const toast = m => ui().toast(m)
 // Whether this browser has a way to sign in at all: a passkey, or a password on an instance that
 // offers one (#118) — which is also what a browser without passkey support has left.
 const pwOn = () => passwordOn(useStore.getState?.()?.config)
-const canSignIn = () => webauthnOK() || pwOn()
+// Web accounts use Supabase email/Google authentication. Passkeys remain a legacy mobile/API
+// capability, but must not be offered by the browser recovery UI.
+const canSignIn = () => !MOBILE
 
 // "gym.example.com" out of the base URL the store keeps (a subpath stays: it is part of which
 // server this is). Anything unparseable is shown as it is.
@@ -128,9 +131,17 @@ export function connectServer() {
 // what this browser kept (adoptProfile). On an instance with passwords the sign-in sheet comes
 // first, with the passkey one tap away on it: which of the two this account has is not
 // something this browser can know.
+function SupabaseSignInSheet({ close }) {
+  const [mode, setMode] = useState('signin')
+  return <>
+    <h3>{mode === 'signup' ? t('Create an account') : t('Sign in')}</h3>
+    <AccountForm mode={mode} onMode={setMode} onDone={close} />
+  </>
+}
+
 export function signInAgain() {
-  if (pwOn()) { openPasswordSignIn(webauthnOK() ? passkeySignIn : undefined); return }
-  return passkeySignIn()
+  if (MOBILE) return
+  ui().openSheet(close => <SupabaseSignInSheet close={close} />)
 }
 export async function passkeySignIn() {
   const st = useStore.getState()
@@ -221,7 +232,7 @@ export function OwedSheet({ kind, count: count0, media: media0 = 0, exportBackup
         : t('Try again, or export a backup first. Going ahead anyway keeps a copy of these changes on this device until it connects to this server as this account again. Then they’re added back.')}
     </div>
     {refused && MOBILE && <><button className="btn primary" disabled={busy} onClick={() => { close(); pairAgain() }}>{t('Pair again')}</button><div style={{ height: 8 }} /></>}
-    {refused && !MOBILE && canSignIn() && <><button className="btn primary" disabled={busy} onClick={() => { close(); signInAgain() }}>{pwOn() ? t('Sign in') : t('Sign in with passkey')}</button><div style={{ height: 8 }} /></>}
+    {refused && !MOBILE && canSignIn() && <><button className="btn primary" disabled={busy} onClick={() => { close(); signInAgain() }}>{t('Sign in')}</button><div style={{ height: 8 }} /></>}
     {!refused && <><button className="btn primary" disabled={busy} onClick={retry}>{busy ? t('Syncing…') : t('Try again')}</button><div style={{ height: 8 }} /></>}
     {media > 0 && exportBackupZip
       ? <Button icon="share" disabled={busy} onClick={exportBackupZip}>{t('Export with photos & videos (.zip)')}</Button>
@@ -275,7 +286,7 @@ export function ServerSyncSection({ children }) {
       onClick={() => ui().openSheet(close => <CfAccessSheet close={close} server={sync.server || ''} />)} />}
     {sync.status === 'auth' && (MOBILE
       ? <Row icon="qr" iconTint="var(--indigo)" title={t('Pair again')} subtitle={t('Your changes are kept here, and merged into your account once it is paired again.')} accessory="chevron" onClick={pairAgain} />
-      : canSignIn() && <Row icon={pwOn() ? 'person' : 'fingerprint'} iconTint="var(--blue)" title={pwOn() ? t('Sign in') : t('Sign in with passkey')} subtitle={t('Your changes are kept here, and merged into your account once you are signed in again.')} accessory="chevron" onClick={signInAgain} />)}
+      : canSignIn() && <Row icon="person" iconTint="var(--blue)" title={t('Sign in')} subtitle={t('Your changes are kept here, and merged into your account once you are signed in again.')} accessory="chevron" onClick={signInAgain} />)}
     {/* another account's, kept when this one signed in over a copy that still owed them */}
     <KeptChangesRows />
     {children}

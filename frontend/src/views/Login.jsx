@@ -9,7 +9,7 @@ import Icon from '../components/Icon.jsx'
 import IsoraMark from '../components/IsoraMark.jsx'
 import { Button } from '../components/ui.jsx'
 
-export function AccountForm({ mode, onMode }) {
+export function AccountForm({ mode, onMode, onDone }) {
   const { setUser, pullState, pushState } = useStore()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -30,6 +30,7 @@ export function AccountForm({ mode, onMode }) {
       setUser(boot.user)
       if (hasData(useStore.getState().S)) await pushState(); else await pullState()
       useUI.getState().toast(t('Welcome, {0}', boot.user.name || email.split('@')[0]))
+      onDone?.()
     } catch (err) { useUI.getState().toast(err.message || t('Sign-in failed')); setBusy(false) }
   }
   const google = async () => {
