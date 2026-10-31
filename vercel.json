@@ -4,8 +4,7 @@
     "api": {
       "root": "api",
       "runtime": "container",
-      "entrypoint": "Dockerfile",
-      "maxDuration": 900
+      "entrypoint": "Dockerfile"
     },
     "frontend": {
       "root": "frontend",
