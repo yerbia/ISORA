@@ -493,7 +493,7 @@ export default {
   'Notifications': 'Notificaciones',
   'Not supported in this browser.': 'No compatible con este navegador.',
   'Push notifications': 'Notificaciones push',
-  'Rest-timer alerts, even if ISORA is closed.': 'Avisos del temporizador de descanso, incluso con ISORA cerrado.',
+  'Rest-timer alerts, even if ENTREN.AR is closed.': 'Avisos del temporizador de descanso, incluso con ENTREN.AR cerrado.',
   'Workout day reminder': 'Recordatorio de día de entrenamiento',
   'Reminder time': 'Hora del recordatorio',
   "Only sent on days you have a routine planned and haven't logged a workout yet.": 'Solo se envía los días con rutina planificada y sin entrenamiento registrado.',
