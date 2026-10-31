@@ -235,7 +235,7 @@ self.addEventListener('push', e => {
         // With no window of the site visible, a push that shows nothing is a "silent push" to
         // Chrome, which counts them and in the end shows its own notice instead; one shown and
         // closed in the same breath is not.
-        if (!onScreen) { try { await self.registration.showNotification('ISORA', { tag: 'isora-rest', silent: true }); for (const n of await self.registration.getNotifications({ tag: 'isora-rest' })) n.close() } catch {} }
+        if (!onScreen) { try { await self.registration.showNotification('Entren.ar', { tag: 'isora-rest', silent: true }); for (const n of await self.registration.getNotifications({ tag: 'isora-rest' })) n.close() } catch {} }
         return
       }
     }

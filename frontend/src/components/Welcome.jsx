@@ -92,7 +92,7 @@ export default function Welcome({ onDone, replay = false }) {
   return <div className={'wel' + (replay ? ' replay' : '')} ref={root} role="dialog" aria-label={t('Welcome to ISORA')}
     onPointerDown={down} onPointerUp={up} onPointerCancel={() => { drag.current = null }}>
     <div className="wel-top">
-      <span className="wel-brand"><IsoraMark size={22} /><b>ISORA</b></span>
+      <span className="wel-brand"><IsoraMark size={22} /><b>Entren.ar</b></span>
       <button type="button" className="wel-skip" onClick={onDone}>{last ? '' : t('Skip')}</button>
     </div>
     <div className="wel-deck">

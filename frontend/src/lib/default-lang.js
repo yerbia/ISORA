@@ -37,7 +37,7 @@ export function autoLang(S, config, navLangs = []) {
   if (!S || S.langAuto !== true) return null
   return matchLocale(config?.default_lang)
     || (navLangs || []).map(matchLocale).find(Boolean)
-    || 'en'
+    || 'es'
 }
 
 // The instance's DEFAULT_LANG as last seen on this device, so a boot does not show the browser's
@@ -57,7 +57,7 @@ function cachedDefaultLang() {
  * stands in for it; with none seen yet the copy's stored language is used unchanged.
  */
 export function effectiveLang(S, config, navLangs = browserLangs()) {
-  const own = (S && typeof S.lang === 'string' && S.lang) || 'en'
+  const own = (S && typeof S.lang === 'string' && S.lang) || 'es'
   if (!S || S.langAuto !== true) return own
   let cfg = config
   if (!cfg) {

@@ -137,7 +137,7 @@ export default function Home() {
     <div className="hdr home-hdr">
       <WeekRing done={doneThisWeek} target={prof.weekTarget}><Avatar profile={S.profile} size={44} onClick={profileSheet} label={t('Your profile')} /></WeekRing>
       <div className="home-hdr-txt">
-        <h1 className={!user && prof.name ? 'greet' : undefined}>{user ? t('Hi {0}', user.name) : prof.name ? t(greetingFor(today.getHours()), prof.name) : <span className="brand"><IsoraMark />ISORA</span>}</h1>
+        <h1 className={!user && prof.name ? 'greet' : undefined}>{user ? t('Hi {0}', user.name) : prof.name ? t(greetingFor(today.getHours()), prof.name) : <span className="brand"><IsoraMark />Entren.ar</span>}</h1>
         <div className="sub">{today.toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}
           {prof.weekTarget > 0 && <span className={'wk-goal' + (doneThisWeek >= prof.weekTarget ? ' met' : '')}>{t('{0} of {1} this week', doneThisWeek, prof.weekTarget)}</span>}</div>
       </div>
