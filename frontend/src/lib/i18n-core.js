@@ -173,6 +173,11 @@ export const descFor = ex => {
   if (!ex) return ''
   const own = descs && descs[ex.id]
   if (own) return own
+  // The catalogue already ships Spanish instruction steps for many exercises, while the
+  // optional short-description field is still English. Reuse the first translated step as the
+  // local summary instead of showing an English paragraph above Spanish instructions.
+  const translatedStep = instr && instr[ex.id]?.[0]
+  if (translatedStep) return translatedStep
   if (!enDescs) askDetails()
   return (enDescs && enDescs[ex.id]) || ex.desc || ''
 }
