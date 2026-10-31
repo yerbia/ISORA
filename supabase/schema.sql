@@ -25,6 +25,10 @@ alter table public.profiles enable row level security;
 alter table public.workout_states enable row level security;
 alter table public.push_subscriptions enable row level security;
 
+grant select, insert, update, delete on table public.profiles to authenticated;
+grant select, insert, update, delete on table public.workout_states to authenticated;
+grant select, insert, update, delete on table public.push_subscriptions to authenticated;
+
 drop policy if exists "profiles own row" on public.profiles;
 create policy "profiles own row" on public.profiles for select using (auth.uid() = id);
 drop policy if exists "profiles own update" on public.profiles;
