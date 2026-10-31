@@ -10,6 +10,12 @@ import './isora.css'
 import './motion.css'
 import './lib/install.js'   // catches the browser's install prompt early (components/InstallBanner.jsx)
 
+// Keep the apex domain canonical. Vercel may still serve the legacy www alias while its
+// domain configuration propagates, but the browser should always display entren.ar.
+if (location.hostname === 'www.entren.ar') {
+  location.replace(`https://entren.ar${location.pathname}${location.search}${location.hash}`)
+}
+
 // App.jsx restores per-route scroll itself; the browser's own attempt races it.
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
 
