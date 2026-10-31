@@ -14,6 +14,16 @@
       "outputDirectory": "dist"
     }
   },
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [
+        { "type": "host", "value": "www.entren.ar" }
+      ],
+      "destination": "https://entren.ar/$1",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/(.*)",
