@@ -1987,7 +1987,10 @@ const routes = {
       user = { id: su.id, name: name.trim().slice(0, 40), email: normalizeEmail(su.email || ''), created: new Date().toISOString(), sv: 0 };
       db.users.push(user);
       claimFirstAdmin(req, user);
-      saveDb();
+      // Supabase is the durable account store for this deployment. Vercel's function
+      // filesystem may be read-only or ephemeral, so a local mirror must never turn a
+      // successful Supabase login into an HTTP 500.
+      try { saveDb(); } catch (e) { console.error('supabase user mirror not persisted:', e.message); }
     }
     if (user.disabled) return json(res, 403, { error: 'account disabled' });
     res.setHeader('Set-Cookie', sessionCookie(user));
