@@ -35,12 +35,15 @@ import { effectiveRoutineId } from './queue.js';
 import { stampPut } from './sync-stamps.js';
 import { atomicWrite as durableWrite } from './durable.js';
 import { excusedOn, nudgeFor, nudgeWindowOpen, toneOf } from './nudge.js';
+import { createClient } from '@supabase/supabase-js';
 
 const PORT = +(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || '/data';
 const RP_ID = process.env.RP_ID || 'localhost';
 const ORIGIN = process.env.ORIGIN || 'http://localhost:8080';
 const RP_NAME = process.env.RP_NAME || 'openGym';
+const SUPABASE_URL = String(process.env.SUPABASE_URL || '').trim();
+const SUPABASE_ANON_KEY = String(process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || '').trim();
 // Admin dashboard (issue): admins are matched by uid (or the admin flag FIRST_USER_ADMIN sets);
 // INVITE_ONLY gates new signups behind a code the admin generates. Off by default, so a fresh
 // self-hosted instance stays open.
@@ -611,6 +614,19 @@ function sessionOf(req) {
 }
 function readSession(req) {
   return sessionOf(req)?.user || null;
+}
+
+// Supabase Auth is the public account system for Entren.ar. The access token is verified against
+// Supabase, then the existing signed cookie keeps the legacy API routes working.
+async function supabaseAuth(req) {
+  const auth = req.headers.authorization || '';
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !auth.startsWith('Bearer ')) return null;
+  const token = auth.slice(7).trim();
+  if (!token) return null;
+  const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { global: { headers: { Authorization: `Bearer ${token}` } } });
+  const { data, error } = await client.auth.getUser(token);
+  if (error || !data.user) return null;
+  return { client, user: data.user };
 }
 // Guard for /api/admin/* — resolves the caller and 401/403s if they aren't an admin.
 function requireAdmin(req, res) {
@@ -1960,6 +1976,24 @@ const routes = {
     json(res, 200, { user: { id: user.id, name: user.name, admin: isAdmin(user) }, ...(renew ? { token: makeSession(user) } : {}) });
   },
 
+  // Exchange a Supabase Auth session for the signed cookie used by the existing Node API.
+  'POST /api/auth/supabase': async (req, res) => {
+    const auth = await supabaseAuth(req);
+    if (!auth) return json(res, 401, { error: 'invalid Supabase session' });
+    const su = auth.user;
+    let user = db.users.find(u => u.id === su.id);
+    if (!user) {
+      const name = text(su.user_metadata?.name || su.user_metadata?.full_name || su.email?.split('@')[0] || '');
+      user = { id: su.id, name: name.trim().slice(0, 40), email: normalizeEmail(su.email || ''), created: new Date().toISOString(), sv: 0 };
+      db.users.push(user);
+      claimFirstAdmin(req, user);
+      saveDb();
+    }
+    if (user.disabled) return json(res, 403, { error: 'account disabled' });
+    res.setHeader('Set-Cookie', sessionCookie(user));
+    json(res, 200, { user: { id: user.id, name: user.name, admin: isAdmin(user) } });
+  },
+
   'POST /api/register/options': async (req, res) => {
     const body = await readBody(req);
     const name = text(body.name).trim().slice(0, 40);
@@ -2174,6 +2208,12 @@ const routes = {
   'GET /api/data': async (req, res) => {
     const user = readSession(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
+    const sa = await supabaseAuth(req);
+    if (sa?.user?.id === user.id) {
+      const { data, error } = await sa.client.from('workout_states').select('state,updated_at').eq('user_id', user.id).maybeSingle();
+      if (error) return json(res, 500, { error: error.message });
+      return json(res, 200, { state: data?.state || null, rev: 0 });
+    }
     const state = readStateStrict(user.id);
     if (state === UNREADABLE) { console.error('state file unreadable for', user.id); return json(res, 503, { error: 'state unreadable' }); }
     notePull(user);
@@ -2188,6 +2228,12 @@ const routes = {
   'GET /api/data/rev': async (req, res) => {
     const user = readSession(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
+    const sa = await supabaseAuth(req);
+    if (sa?.user?.id === user.id) {
+      const { data, error } = await sa.client.from('workout_states').select('updated_at').eq('user_id', user.id).maybeSingle();
+      if (error) return json(res, 500, { error: error.message });
+      return json(res, 200, { rev: data?.updated_at ? Date.parse(data.updated_at) : 0 });
+    }
     const doc = readStateCached(user.id);
     json(res, 200, { rev: doc?._rev || 0, ...(doc?._wid ? { wid: doc._wid } : {}) });
   },
@@ -2197,6 +2243,13 @@ const routes = {
     if (!user) return json(res, 401, { error: 'not signed in' });
     const body = await readBody(req);
     if (!body.state || typeof body.state !== 'object') return json(res, 400, { error: 'state required' });
+    const sa = await supabaseAuth(req);
+    if (sa?.user?.id === user.id) {
+      delete body.state.active;
+      const { error } = await sa.client.from('workout_states').upsert({ user_id: user.id, state: body.state, updated_at: new Date().toISOString() });
+      if (error) return json(res, 500, { error: error.message });
+      return json(res, 200, { ok: true, ts: body.state._ts || null });
+    }
     // An object with nothing of the profile in it empties the document with the counter left
     // intact: what lands on disk is `{"_rev":n+1}`, every routine, workout and weigh-in gone, and
     // the next poll reports a revision the client accepts as its own. `_rev` and `_ts` do not

@@ -3,6 +3,7 @@ import { t } from './i18n-core.js'
 import { MOBILE } from './mobile.js'
 import { appBase } from './app-base.js'
 import { nativeFetch } from './capacitor-fetch.js'
+import { supabase } from './supabase.js'
 
 export const IS_APPLE = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent)
 export const IS_ANDROID = /Android/.test(navigator.userAgent)
@@ -36,6 +37,48 @@ const remoteHeaders = () => Object.assign({}, accessFor(remoteBase), remoteToken
 
 export { appBase }
 
+export async function currentSupabaseSession() {
+  const { data, error } = await supabase.auth.getSession()
+  if (error) throw error
+  return data.session
+}
+
+export async function supabaseSignUp(email, password, name) {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { name: String(name || '').trim().slice(0, 40) } }
+  })
+  if (error) throw error
+  return data
+}
+
+export async function supabaseSignIn(email, password) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) throw error
+  return data
+}
+
+export async function supabaseSignInWithGoogle() {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google', options: { redirectTo: window.location.origin }
+  })
+  if (error) throw error
+}
+
+export async function supabaseSignOut() {
+  const { error } = await supabase.auth.signOut()
+  if (error) throw error
+}
+
+export async function bootstrapSupabaseSession(session) {
+  const token = session?.access_token
+  if (!token) throw new Error('No hay una sesión de Supabase activa.')
+  return api('/api/auth/supabase', {
+    method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: '{}'
+  })
+}
+
 // How long one request may take before it counts as no answer at all. A black-holed connection
 // (captive portal, half-open socket, a phone between two networks) never settles on its own, and
 // the store runs one push and one pull at a time: a single hung request used to hold every later
@@ -56,6 +99,10 @@ export async function api(path, opts) {
   // undefined: this is not "offline", and the store must not show it as such.
   if (MOBILE && !remoteBase) throw failure(t('This phone is not connected to a server.'), 'not-paired', 0)
   const headers = Object.assign({ 'Content-Type': 'application/json' }, init.headers, remoteHeaders())
+  if (!remoteBase && !headers.Authorization) {
+    const { data } = await supabase.auth.getSession()
+    if (data.session?.access_token) headers.Authorization = `Bearer ${data.session.access_token}`
+  }
   // A paired phone has an absolute base of its own; everyone else is relative to where the app
   // is served, so a subpath deployment reaches its own API instead of the proxy's root.
   const url = remoteBase ? remoteBase + path : appBase().replace(/\/$/, '') + path

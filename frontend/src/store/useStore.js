@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { api, setRemoteAuth } from '../lib/api.js'
+import { api, setRemoteAuth, currentSupabaseSession, bootstrapSupabaseSession } from '../lib/api.js'
 import { localTZ } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
 import { registerCustom, healCustomEx } from '../lib/exercises.js'
@@ -1938,6 +1938,8 @@ export const useStore = create((set, get) => {
         if (logoutOwed()) { finishBoot(); return }
       }
       try {
+        const sbSession = await currentSupabaseSession()
+        if (sbSession?.access_token) await bootstrapSupabaseSession(sbSession)
         const me = await api('/api/me')
         if (!me.user?.id) throw Object.assign(new Error('no user'), { status: 200, code: 'bad-response' })
         get().setUser(me.user)
