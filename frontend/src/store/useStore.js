@@ -931,13 +931,17 @@ export const useStore = create((set, get) => {
   // Everything a sign-out leaves behind on this device, whichever way it was triggered. The owner
   // goes before the wiped copy is written: another tab must learn that the copy is nobody's before
   // it sees the new copy, or it joins its own copy of the account into it (QA 2026-10-06).
-  const clearLocalSession = () => {
+  const clearLocalSession = ({ deferRender = false } = {}) => {
     const hadMedia = referencedHashes(get().S).size > 0
-    get().setUser(null)
+    // On web, the authenticated tree must not render one intermediate frame while it is being
+    // torn down: React can otherwise compare it with the public tree and throw error #300. The
+    // caller reloads after storage cleanup, so defer only the Zustand user update in that case.
+    if (!deferRender) get().setUser(null)
     localStorage.removeItem('gym_guest')
     forgetSync()
     releaseAdopt()   // the copy it was about is gone
     localStorage.removeItem(KEY)
+    if (deferRender) localStorage.removeItem('gym_user')
     localStorage.removeItem('gym_owner_name')
     localStorage.removeItem('gym_owner')
     seenOwner = null   // a guest's tab now: it joins what other signed-out tabs save (as setUser)
@@ -1764,7 +1768,8 @@ export const useStore = create((set, get) => {
       // The device is signed out either way. A request that did not get through leaves the cookie
       // behind, still valid, so the logout is owed until the server answers it (see boot).
       try { await api('/api/logout', { method: 'POST', body: '{}' }) } catch (e) { if (!MOBILE) logoutOwed(true) }
-      await clearLocalSession()
+      const webReload = !MOBILE && typeof window !== 'undefined' && !/jsdom|happy-dom|node\.js/i.test(navigator.userAgent || '')
+      await clearLocalSession({ deferRender: webReload })
       // Supabase owns the browser OAuth session as well as the API cookie. Clear both before
       // showing the public screen; otherwise boot can immediately restore the account on reload.
       try { const { supabaseSignOut } = await import('../lib/api.js'); await supabaseSignOut?.() } catch { /* local sign-out still completes */ }
@@ -1772,7 +1777,7 @@ export const useStore = create((set, get) => {
       // web reload avoids rendering them in the same React pass and guarantees that #/home is a
       // real public entry screen instead of a blank stale route. Tests and native builds stay in
       // the in-memory flow.
-      if (!MOBILE && typeof window !== 'undefined' && !/jsdom|happy-dom|node\.js/i.test(navigator.userAgent || '')) {
+      if (webReload) {
         window.location.hash = '#/home'
         window.location.reload()
       }
