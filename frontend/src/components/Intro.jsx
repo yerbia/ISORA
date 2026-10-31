@@ -60,7 +60,7 @@ export default function Intro() {
             </g>
           </svg>
         </div>
-        <div className="intro-word">{'ISORA'.split('').map((ch, i) => <span key={i} style={{ '--i': i }}>{ch}</span>)}</div>
+        <div className="intro-word">{'Entren.ar'.split('').map((ch, i) => <span key={i} style={{ '--i': i }}>{ch}</span>)}</div>
         <div className="intro-tag">{t('Find your balance.')}</div>
       </div>
       {full && <div className="intro-iso"><div className="intro-iso-hop"><Buddy mood="hyped" size={96} /></div></div>}
