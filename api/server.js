@@ -2215,7 +2215,7 @@ const routes = {
   // (sync-stamps.js ownRecord), `_prior` what each field held before (notePrior): read back only
   // by the next PUT, never sent to a client.
   'GET /api/data': async (req, res) => {
-    const user = readSession(req);
+    const user = await requestUser(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
     const sa = await supabaseAuth(req);
     if (sa?.user?.id === user.id) {
@@ -2235,7 +2235,7 @@ const routes = {
   // to read one number off it cost 31 ms per poll on a 2.4 MB state, all of it on the event loop.
   // Every write goes through atomicWrite's rename, so the cache can never hand out a stale rev.
   'GET /api/data/rev': async (req, res) => {
-    const user = readSession(req);
+    const user = await requestUser(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
     const sa = await supabaseAuth(req);
     if (sa?.user?.id === user.id) {
@@ -2248,7 +2248,7 @@ const routes = {
   },
 
   'PUT /api/data': async (req, res) => {
-    const user = readSession(req);
+    const user = await requestUser(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
     const body = await readBody(req);
     if (!body.state || typeof body.state !== 'object') return json(res, 400, { error: 'state required' });
