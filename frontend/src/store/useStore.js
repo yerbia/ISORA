@@ -1959,10 +1959,17 @@ export const useStore = create((set, get) => {
       }
       try {
         const sbSession = await currentSupabaseSession()
-        if (sbSession?.access_token) await bootstrapSupabaseSession(sbSession)
+        const supabaseWeb = !!sbSession?.access_token
+        if (supabaseWeb) await bootstrapSupabaseSession(sbSession)
         const me = await api('/api/me')
         if (!me.user?.id) throw Object.assign(new Error('no user'), { status: 200, code: 'bad-response' })
-        get().setUser(me.user)
+        if (supabaseWeb) {
+          // A reload on a second browser can carry local guest data. Resolve it against the
+          // Supabase account before the normal poll, otherwise pullState may push that local copy
+          // as the first revision and isolate the device from the account profile.
+          get().setUser(me.user, { adopt: true })
+          await get().adoptProfile(async () => true)
+        } else get().setUser(me.user)
         // Re-stamp the reminder's timezone on every load — keeps it correct if you're travelling,
         // without needing to revisit Settings.
         const restampTz = () => {
@@ -1978,7 +1985,7 @@ export const useStore = create((set, get) => {
           get().resumeAdoption().then(() => { if (!adoptHold) restampTz() })
           return
         }
-        await get().pullState()
+        if (!supabaseWeb) await get().pullState()
         if (!get().sync.lastError) await applyStash()   // only once the server really answered
         restampTz()
       } catch (e) {
