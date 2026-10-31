@@ -1577,7 +1577,11 @@ export const useStore = create((set, get) => {
         if (get().config && !('coach' in get().config)) get().refreshConfig()
       } else { rejoined = false; adoptHold = false; localStorage.removeItem('gym_user') }
       set({ user: u })
-      setSync({ held: adoptHold })
+      // A successful Supabase/API bootstrap replaces any stale 401 left by a previous
+      // server-cookie session. Clear that transient warning so Account reflects the live session.
+      setSync(u
+        ? { held: adoptHold, auth: false, offline: false, lastError: null, pending: false }
+        : { held: adoptHold })
     },
 
     // One PUT at a time: a push asked for while one is in flight runs after it (once, however
