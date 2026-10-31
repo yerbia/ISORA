@@ -1,6 +1,6 @@
 {
-  "name": "ISORA",
-  "short_name": "ISORA",
+  "name": "Entren.ar",
+  "short_name": "Entren.ar",
   "description": "Lift, rest, play. A gym tracker with a block puzzle in every rest.",
   "start_url": "./",
   "scope": "./",
