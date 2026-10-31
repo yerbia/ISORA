@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useStore, hasData } from '../store/useStore.js'
+import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { bootstrapSupabaseSession, supabaseSignIn, supabaseSignInWithGoogle, supabaseSignUp } from '../lib/api.js'
 import { t } from '../lib/i18n.js'
@@ -10,7 +10,7 @@ import IsoraMark from '../components/IsoraMark.jsx'
 import { Button } from '../components/ui.jsx'
 
 export function AccountForm({ mode, onMode, onDone }) {
-  const { setUser, pullState, pushState } = useStore()
+  const { setUser, adoptProfile } = useStore()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -27,8 +27,10 @@ export function AccountForm({ mode, onMode, onDone }) {
         : await supabaseSignIn(email.trim(), password)
       if (!result.session) { useUI.getState().toast(t('Check your email to confirm your account.')); setBusy(false); return }
       const boot = await bootstrapSupabaseSession(result.session)
-      setUser(boot.user)
-      if (hasData(useStore.getState().S)) await pushState(); else await pullState()
+      // Resolve this browser's local copy against the account copy before syncing. A direct
+      // push here made every new browser overwrite or isolate the profile instead of merging it.
+      setUser(boot.user, { adopt: true })
+      await useStore.getState().adoptProfile(async () => true)
       useUI.getState().toast(t('Welcome, {0}', boot.user.name || email.split('@')[0]))
       onDone?.()
     } catch (err) { useUI.getState().toast(err.message || t('Sign-in failed')); setBusy(false) }
