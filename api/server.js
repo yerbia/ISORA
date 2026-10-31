@@ -628,6 +628,12 @@ async function supabaseAuth(req) {
   if (error || !data.user) return null;
   return { client, user: data.user };
 }
+// Browser web sessions use Supabase bearer tokens; legacy cookie-only authentication is still
+// used by the mobile/self-hosted paths. Push endpoints accept either so a valid web login can
+// register notifications without requiring a passkey or an old API cookie.
+async function requestUser(req) {
+  return readSession(req) || (await supabaseAuth(req))?.user || null;
+}
 // Guard for /api/admin/* — resolves the caller and 401/403s if they aren't an admin.
 function requireAdmin(req, res) {
   const user = readSession(req);
@@ -2349,7 +2355,7 @@ const routes = {
   'GET /api/push/public-key': async (req, res) => json(res, 200, { key: vapid.publicKey }),
 
   'POST /api/push/subscribe': async (req, res) => {
-    const user = readSession(req);
+    const user = await requestUser(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
     const body = await readBody(req);
     const sub = body.subscription;
@@ -2389,7 +2395,7 @@ const routes = {
   // to every device of the account (sendPush), and the client re-sends its subscription with its
   // id when this is not its own.
   'GET /api/push/status': async (req, res) => {
-    const user = readSession(req);
+    const user = await requestUser(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
     const endpoint = new URL(req.url, 'http://x').searchParams.get('endpoint') || '';
     const row = db.subs.find(s => s.userId === user.id && s.endpoint === endpoint);
@@ -2397,7 +2403,7 @@ const routes = {
   },
 
   'POST /api/push/unsubscribe': async (req, res) => {
-    const user = readSession(req);
+    const user = await requestUser(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
     const body = await readBody(req);
     db.subs = db.subs.filter(s => !(s.userId === user.id && s.endpoint === body.endpoint));
@@ -2406,14 +2412,14 @@ const routes = {
   },
 
   'POST /api/push/test': async (req, res) => {
-    const user = readSession(req);
+    const user = await requestUser(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
     await sendPush(user.id, testPush(readStateCached(user.id)?.lang));
     json(res, 200, { ok: true });
   },
 
   'POST /api/push/rest-timer': async (req, res) => {
-    const user = readSession(req);
+    const user = await requestUser(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
     const body = await readBody(req);
     // Validated before it is clamped: the clamp used to run first, which turned a missing or
@@ -2428,7 +2434,7 @@ const routes = {
   },
 
   'POST /api/push/rest-timer/cancel': async (req, res) => {
-    const user = readSession(req);
+    const user = await requestUser(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
     const body = await readBody(req);
     cancelRestTimer(user.id, deviceIdOf(body.deviceId));
