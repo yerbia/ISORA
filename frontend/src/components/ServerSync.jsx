@@ -89,7 +89,9 @@ export function connectionView(sync, { mobile = MOBILE, online = isOnline() } = 
         ? { tone: 'bad', icon: 'warning', action: 'retry', line: t('Not an ISORA answer (HTTP {0})', err.status), banner: t('Your server’s address answered with something other than ISORA (HTTP {0}). Your changes are kept here.', err.status) }
         : { tone: 'bad', icon: 'warning', action: 'retry', line: t('Server error (HTTP {0})', err.status), banner: t('Your server answered with an error (HTTP {0}). Your changes are kept here.', err.status) }
     case 'auth':
-      if (!mobile) return { tone: 'bad', icon: 'lock', action: 'signin', line: t('The server refuses this browser'), banner: t('Your server no longer accepts this browser. Your changes are kept here.') }
+      // Browser accounts are owned by Supabase; an expired legacy API cookie is not a user-facing
+      // connection state. Keep the web UI quiet and let the normal account screen handle auth.
+      if (!mobile) return { tone: 'ok', icon: 'cloud', action: null, line: t('All synced'), banner: null }
       // A phone an earlier version unpaired kept no address and no token: nothing refuses it,
       // there is simply nothing to ask.
       return err.code === 'not-paired'
@@ -193,7 +195,7 @@ export function OwedSheet({ kind, count: count0, media: media0 = 0, exportBackup
   const view = connectionView(sync)
   // Refused because it is paired or signed in to a server that no longer takes it: trying
   // again cannot work, and pairing or signing in again brings the changes to the server.
-  const refused = sync?.status === 'auth'
+  const refused = sync?.status === 'auth' && MOBILE
   const finish = r => { close(); done(r) }
   const retry = async () => {
     setBusy(true)
@@ -265,7 +267,8 @@ export function ServerSyncSection({ children }) {
   const view = connectionView(sync, { online })
   // While everything is fine, a change still in its short debounce is not news; once anything
   // is wrong, how much is waiting is exactly what the person needs.
-  const owed = sync.status !== 'ok' && typeof unsynced === 'function' ? unsynced() : { owed: false }
+  const browserAuth = sync.status === 'auth' && !MOBILE
+  const owed = !browserAuth && sync.status !== 'ok' && typeof unsynced === 'function' ? unsynced() : { owed: false }
   const sub = [
     sync.lastSynced ? t('Last synced: {0}', fmtAgo(sync.lastSynced)) : t('Not synced with this server yet'),
     owed.owed && (owed.count > 0 ? t('Not on your server yet: {0}', changeCount(owed.count)) : owed.count == null ? t('Some changes on this device have not reached your server.') : null),
@@ -284,9 +287,7 @@ export function ServerSyncSection({ children }) {
     <Row icon="reset" iconTint="var(--acc)" title={busy ? t('Syncing…') : t('Sync now')} onClick={now} />
     {MOBILE && <Row icon="key" iconTint="var(--orange)" title={t('Cloudflare Access')} accessory="chevron"
       onClick={() => ui().openSheet(close => <CfAccessSheet close={close} server={sync.server || ''} />)} />}
-    {sync.status === 'auth' && (MOBILE
-      ? <Row icon="qr" iconTint="var(--indigo)" title={t('Pair again')} subtitle={t('Your changes are kept here, and merged into your account once it is paired again.')} accessory="chevron" onClick={pairAgain} />
-      : canSignIn() && <Row icon="person" iconTint="var(--blue)" title={t('Sign in')} subtitle={t('Your changes are kept here, and merged into your account once you are signed in again.')} accessory="chevron" onClick={signInAgain} />)}
+    {sync.status === 'auth' && MOBILE && <Row icon="qr" iconTint="var(--indigo)" title={t('Pair again')} subtitle={t('Your changes are kept here, and merged into your account once it is paired again.')} accessory="chevron" onClick={pairAgain} />}
     {/* another account's, kept when this one signed in over a copy that still owed them */}
     <KeptChangesRows />
     {children}
