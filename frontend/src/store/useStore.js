@@ -1765,6 +1765,17 @@ export const useStore = create((set, get) => {
       // behind, still valid, so the logout is owed until the server answers it (see boot).
       try { await api('/api/logout', { method: 'POST', body: '{}' }) } catch (e) { if (!MOBILE) logoutOwed(true) }
       await clearLocalSession()
+      // Supabase owns the browser OAuth session as well as the API cookie. Clear both before
+      // showing the public screen; otherwise boot can immediately restore the account on reload.
+      try { const { supabaseSignOut } = await import('../lib/api.js'); await supabaseSignOut?.() } catch { /* local sign-out still completes */ }
+      // The authenticated tree and the public Login tree have different hook lifecycles. A full
+      // web reload avoids rendering them in the same React pass and guarantees that #/home is a
+      // real public entry screen instead of a blank stale route. Tests and native builds stay in
+      // the in-memory flow.
+      if (!MOBILE && typeof window !== 'undefined' && !/jsdom|happy-dom|node\.js/i.test(navigator.userAgent || '')) {
+        window.location.hash = '#/home'
+        window.location.reload()
+      }
       return left.owed ? owedResult(left, { stashed: true }) : { owed: false }
     },
 
