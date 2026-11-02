@@ -20,7 +20,7 @@ export default function Media(p) {
 // future workouts (issue #12). Settings can also turn workout media off entirely
 // (gifSize 'off') — then nothing renders here and the exercise card closes up, exactly like
 // an exercise without media. Any other/legacy value behaves as 'full'.
-function BuiltinMedia({ ex, id, compact, minimizable }) {
+function BuiltinMedia({ ex, id, compact, minimizable, detail }) {
   const [playing, setPlaying] = useState(true)
   // 'gif' → the animation failed, the still is showing; 'all' → the still failed too. Media is
   // fetched from wherever the build points (a mount, a CDN): a dropped connection, an expired
@@ -44,7 +44,7 @@ function BuiltinMedia({ ex, id, compact, minimizable }) {
     setPlaying(p => !p)
   }
   return (
-    <div className={'exmedia' + (compact ? ' compact' : '') + (mini ? ' mini' : '') + (failed === 'all' ? ' broken' : '')} id={id} onClick={onTap}>
+    <div className={'exmedia' + (detail ? ' detail' : '') + (compact ? ' compact' : '') + (mini ? ' mini' : '') + (failed === 'all' ? ' broken' : '')} id={id} onClick={onTap}>
       {failed === 'all'
         ? <div className="exmedia-x"><Icon name="dumbbell" /></div>
         : showGif && clip && clipSrc

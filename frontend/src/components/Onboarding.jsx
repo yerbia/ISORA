@@ -3,7 +3,7 @@ import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { t, getLang } from '../lib/i18n.js'
 import { todayISO } from '../lib/format.js'
-import { PERSONAL } from '../lib/demo.js'
+import { MOBILE } from '../lib/mobile.js'
 import { newProfile } from '../lib/equipment.js'
 import { cleanProfile } from '../lib/profile.js'
 import { SCRIPT, normalizeProfile, scriptedFocus, pickPlan, resumeScript, unitHint, planShape } from '../lib/onboarding.js'
@@ -18,6 +18,7 @@ import { seedCycling } from '../lib/cycling.js'
 import { cleanBuddy, KIND, DEFAULT_NAME } from '../lib/buddy.js'
 import Icon from './Icon.jsx'
 import { Button } from './ui.jsx'
+import { AccountForm } from '../views/Login.jsx'
 
 // The first open of the personal app: ISORA's coach greets you in a chat, learns what you train
 // for, your weight and height, your level, your days and your equipment, and sets the app up —
@@ -25,27 +26,38 @@ import { Button } from './ui.jsx'
 // The coach is an LLM behind /api/coach-chat; when that is not available (no key, offline) the
 // same chat runs from the script, so the first open never depends on the network.
 
-const OPENER = (lang, unit, buddy) => `[ISORA was just opened for the first time. App language: ${lang}. Weight unit: ${unit}. In this chat you are ${buddy.name}, my ISORA buddy (a little square blue block creature) that I just met: speak as ${buddy.name}, a warm, playful companion. Greet me and start.]`
+const OPENER = (lang, unit, buddy) => `[ENTREN.AR was just opened for the first time. App language: ${lang}. Weight unit: ${unit}. In this chat you are ${buddy.name}, my ENTREN.AR buddy (a little square blue block creature) that I just met: speak as ${buddy.name}, a warm, playful companion. Greet me and start.]`
+
+function OnboardingAccountSheet({ close, onDone }) {
+  const [mode, setMode] = useState('signup')
+  return <div>
+    <h3>{t('Save your progress')}</h3>
+    <p className="muted small">{t('Create an account to keep your plan and workouts across devices.')}</p>
+    <AccountForm mode={mode} onMode={setMode} onDone={() => { onDone?.(); close() }} />
+  </div>
+}
 
 export default function Onboarding() {
-  const show = useStore(s => PERSONAL && !s.S.onboarded && !s.S.routines.length && !s.S.workouts.length && !s.S.active)
+  const show = useStore(s => !MOBILE && ((!s.S.onboarded && !s.S.routines.length && !s.S.workouts.length && !s.S.active) || s.S.onboardingOfferLogin))
   return show ? <OnboardingChat /> : null
 }
 
 function OnboardingChat() {
   const S = useStore(s => s.S)
   const update = useStore(s => s.update)
-  const [msgs, setMsgs] = useState([])            // { from: 'coach' | 'me', text }
+  const savedDraft = S.onboardingDraft || {}
+  const [msgs, setMsgs] = useState(() => Array.isArray(savedDraft.messages) ? savedDraft.messages : [])            // { from: 'coach' | 'me', text }
   const [quick, setQuick] = useState([])
   const [busy, setBusy] = useState(false)
   const [draft, setDraft] = useState('')
-  const [result, setResult] = useState(null)       // the profile once the chat has it all
+  const [result, setResult] = useState(() => savedDraft.result || null)       // the profile once the chat has it all
+  const [applied, setApplied] = useState(() => !!savedDraft.applied)
   const [restoring, setRestoring] = useState(false)
-  const mode = useRef('ai')
+  const mode = useRef(savedDraft.mode === 'script' ? 'script' : 'ai')
   const [picked, setPicked] = useState(() => !!cleanBuddy(S.buddy).kind)
   const [welcomed, setWelcomed] = useState(() => !!cleanBuddy(S.buddy).kind)   // the welcome screens come before meeting Trino
   const buddy = cleanBuddy(S.buddy)
-  const history = useRef(null)
+  const history = useRef(Array.isArray(savedDraft.history) ? savedDraft.history : null)
   const root = useRef(null)
   // The overlay is sized to the visual viewport, not the layout one: on iOS the keyboard does not
   // resize the page, it scrolls it, and a plain inset:0 overlay then sat half off-screen with the
@@ -71,19 +83,34 @@ function OnboardingChat() {
       window.scrollTo(0, y)
     }
   }, [welcomed])   // the chat's root exists only once the welcome is over
-  const known = useRef({})          // what the server says the chat has learned so far (api/coach-chat.js)
-  const declined = useRef([])
-  const script = useRef({ i: 0, answers: {} })
+  const known = useRef(savedDraft.known && typeof savedDraft.known === 'object' ? savedDraft.known : {})          // what the server says the chat has learned so far (api/coach-chat.js)
+  const declined = useRef(Array.isArray(savedDraft.declined) ? savedDraft.declined : [])
+  const script = useRef(savedDraft.script && typeof savedDraft.script === 'object' ? savedDraft.script : { i: 0, answers: {} })
   const end = useRef(null)
 
+  const saveDraft = patch => update(s => {
+    s.onboardingDraft = { ...(s.onboardingDraft || {}), ...patch }
+  }, false)
+  const snapshotDraft = extra => ({
+    messages: msgs,
+    history: history.current,
+    known: known.current,
+    declined: declined.current,
+    mode: mode.current,
+    script: script.current,
+    ...extra,
+  })
   const say = (from, text) => setMsgs(m => [...m, { from, text, id: m.length }])
+  useEffect(() => {
+    if (msgs.length) saveDraft(snapshotDraft({ messages: msgs }))
+  }, [msgs])
   useEffect(() => { end.current?.scrollIntoView?.({ behavior: 'smooth', block: 'end' }) }, [msgs, busy, result])
 
   // --- the scripted coach -------------------------------------------------
   const askScript = () => {
     const st = SCRIPT[script.current.i]
     // the buddy introduces itself by its own name; the rest of the script uses yours
-    say('coach', script.current.i === 0 ? t('Hi, I’m {0}, your ISORA buddy. What should I call you?', cleanBuddy(useStore.getState().S.buddy).name) : t(st.ask, script.current.answers.name || ''))
+    say('coach', script.current.i === 0 ? t('Hi, I’m {0}, your ENTREN.AR buddy. What should I call you?', cleanBuddy(useStore.getState().S.buddy).name) : t(st.ask, script.current.answers.name || ''))
     setQuick(st.quick.map(q => t(q)))
   }
   // The scripted chat picks up where the AI one got to (lib/onboarding.js resumeScript): what
@@ -93,7 +120,7 @@ function OnboardingChat() {
     script.current = resumeScript(known.current, declined.current)
     if (script.current.i >= SCRIPT.length) {
       const p = normalizeProfile(script.current.answers)
-      const f = scriptedFocus(p)
+      const f = scriptedFocus(p, getLang())
       finish({ ...p, ...f }, f.focus)
       return
     }
@@ -109,9 +136,10 @@ function OnboardingChat() {
     // "176 lb" or "5 ft 11": the app will switch to pounds; "80 kg" keeps kilos
     if ((st.key === 'weightKg' || st.key === 'heightCm') && !script.current.answers.unit) { const u = unitHint(text); if (u) script.current.answers.unit = u }
     script.current.i++
+    saveDraft(snapshotDraft())
     if (script.current.i < SCRIPT.length) { askScript(); return }
     const p = normalizeProfile(script.current.answers)
-    const f = scriptedFocus(p)
+    const f = scriptedFocus(p, getLang())
     finish({ ...p, ...f }, f.focus)
   }
 
@@ -140,9 +168,10 @@ function OnboardingChat() {
       const last = [...history.current].reverse().find(m => m.role === 'assistant')
       if (last && last.content.trim() === String(data.reply || '').trim() && !data.done) throw new Error('repeat')
       history.current.push({ role: 'assistant', content: data.reply })
+      saveDraft(snapshotDraft())
       if (data.done && data.profile) {
         const p = normalizeProfile(data.profile)
-        finish(p.focus ? p : { ...p, ...scriptedFocus(p) }, data.reply)
+        finish(p.focus ? p : { ...p, ...scriptedFocus(p, getLang()) }, data.reply)
       } else {
         say('coach', data.reply)
         setQuick(data.quickReplies || [])
@@ -156,17 +185,19 @@ function OnboardingChat() {
   // once the buddy is chosen, and once per mount even where React runs effects twice (StrictMode)
   const started = useRef(false)
   useEffect(() => {
-    if (!picked || started.current) return
+    if (!picked || started.current || result || applied) return
     started.current = true
+    if (history.current?.length) return
     history.current = [{ role: 'user', content: OPENER(getLang(), S.unit, cleanBuddy(useStore.getState().S.buddy)) }]
+    saveDraft(snapshotDraft())
     askAI()
-  }, [picked])
+  }, [picked, result, applied])
 
   const send = text => {
     const v = String(text || '').trim()
     if (!v || busy || result) return
     say('me', v); setDraft(''); setQuick([])
-    if (mode.current === 'ai') { history.current.push({ role: 'user', content: v }); askAI() }
+    if (mode.current === 'ai') { history.current.push({ role: 'user', content: v }); saveDraft(snapshotDraft()); askAI() }
     else answerScript(v)
   }
 
@@ -174,6 +205,7 @@ function OnboardingChat() {
     if (closing && closing !== p.focus) say('coach', closing)
     say('coach', p.focus)
     setResult(p)
+    saveDraft(snapshotDraft({ result: p }))
   }
 
   // --- setting the app up ---------------------------------------------------
@@ -194,12 +226,17 @@ function OnboardingChat() {
       }
       if (gear) { s.equipProfiles = [...(s.equipProfiles || []), gear]; s.equipFilterOn = true; s.activeEquipId = gear.id }
       s.onboarded = true
+      s.onboardingDraft = { result: p, applied: true }
+      s.onboardingOfferLogin = true
     })
     loadStarterPlan(pickPlan(p), gear, planShape(p))
     update(s => { s.cycling = seedCycling(s, true) })   // Variation Cycling, on from day one (lib/cycling.js)
+    setApplied(true)
     oweTours(['home', 'workout'])   // Iso shows the way round, once Home and the first workout are up
   }
-  const skip = () => update(s => { s.onboarded = true })
+  const continueAsGuest = () => update(s => { s.onboardingOfferLogin = false; s.onboardingDraft = null })
+  const openAccount = () => useUI.getState().openSheet(close => <OnboardingAccountSheet close={close} onDone={() => update(s => { s.onboardingOfferLogin = false; s.onboardingDraft = null })} />)
+  const skip = () => update(s => { s.onboarded = true; s.onboardingDraft = null; s.onboardingOfferLogin = false })
 
   const restore = async code => {
     const c = normalizeCode(code)
@@ -209,7 +246,7 @@ function OnboardingChat() {
       const { state } = await download(c)
       saveCode(c)
       useStore.getState().importBackup(state)
-      update(s => { s.onboarded = true })
+      update(s => { s.onboarded = true; s.onboardingDraft = null; s.onboardingOfferLogin = false })
       useUI.getState().toast(t('Welcome back. Your data is restored.'))
     } catch (e) {
       useUI.getState().toast(e.code === 'not-found' ? t('No backup found for that code.') : e.code === 'wrong-code' ? t('That code doesn’t open this backup.') : t('Couldn’t reach the cloud. Check your connection and try again.'))
@@ -220,7 +257,7 @@ function OnboardingChat() {
   if (!welcomed) return <Welcome onDone={() => setWelcomed(true)} />
   if (!picked) return <div className="ob" ref={root} role="dialog" aria-label={t('Welcome to ISORA')}>
     <div className="ob-head">
-      <span className="ob-av"><IsoraMark size={24} /></span>
+      <span className="ob-av"><img className="ob-logo" src="/logo.png" alt="" /></span>
       <div className="ob-head-t"><div className="ob-name">{t('Welcome to ISORA')}</div><div className="ob-sub">{t('Your ISORA buddy')}</div></div>
       <button type="button" className="ob-skip" onClick={skip}>{t('Skip')}</button>
     </div>
@@ -241,11 +278,15 @@ function OnboardingChat() {
       {msgs.map(m => <div key={m.id} className={'ob-msg ' + m.from}>{m.text}</div>)}
       {busy && <div className="ob-msg coach typing" aria-label={t('typing…')}><i /><i /><i /></div>}
       {result && <div className="ob-card">
-        <div className="ob-card-t">{t('Your plan')}</div>
+        <div className="ob-card-t">{applied ? t('Your plan is ready') : t('Your plan')}</div>
         <div className="ob-card-plan">{PLAN_COPY[pickPlan(result)]().name} · {t('{0} days a week', result.daysPerWeek)}</div>
         {result.focusAreas.length > 0 && <div className="ob-areas">{result.focusAreas.map(a => <span key={a}>{a}</span>)}</div>}
-        <Button variant="primary" icon="check" onClick={apply}>{t('Set me up')}</Button>
-        <Button variant="ghost" onClick={() => { setResult(null); setMsgs([]); history.current = history.current.slice(0, 1); script.current = { i: 0, answers: {} }; mode.current === 'ai' ? askAI() : toScript() }}>{t('Start over')}</Button>
+        {!applied && <Button variant="primary" icon="check" onClick={apply}>{t('Set me up')}</Button>}
+        {applied && <>
+          <Button variant="primary" onClick={openAccount}>{t('Create an account to save your progress')}</Button>
+          <Button variant="ghost" onClick={continueAsGuest}>{t('Continue as guest')}</Button>
+        </>}
+        {!applied && <Button variant="ghost" onClick={() => { setResult(null); setMsgs([]); history.current = history.current.slice(0, 1); script.current = { i: 0, answers: {} }; mode.current = 'ai'; saveDraft({ messages: [], history: history.current, known: {}, declined: [], mode: 'ai', script: { i: 0, answers: {} }, result: null }); askAI() }}>{t('Start over')}</Button>}
       </div>}
       <div ref={end} />
     </div>

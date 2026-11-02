@@ -50,15 +50,7 @@ export default function Intro() {
       <div className="intro-stage">
         <div className="intro-markwrap">
           <span className="intro-ring" /><span className="intro-ring r2" />
-          <svg className="intro-mark" viewBox="96 92 320 336">
-            <path className="in-bubble" fill="var(--acc)" d="M184 92h144a88 88 0 0 1 88 88v120a88 88 0 0 1-88 88H226l-70 40 10-48a88 88 0 0 1-70-86V180a88 88 0 0 1 88-88Z" />
-            <path className="in-shine" fill="#fff" opacity=".18" d="M184 112h144a68 68 0 0 1 68 68v8H116v-8a68 68 0 0 1 68-68Z" />
-            <g fill="#fff">
-              <rect className="in-b in-b1" x="190" y="150" width="132" height="38" rx="11" />
-              <rect className="in-b in-b2" x="237" y="199" width="38" height="82" rx="10" />
-              <rect className="in-b in-b3" x="190" y="292" width="132" height="38" rx="11" />
-            </g>
-          </svg>
+          <img className="intro-logo" src="/logo.png" alt="" />
         </div>
         <div className="intro-word">{'Entren.ar'.split('').map((ch, i) => <span key={i} style={{ '--i': i }}>{ch}</span>)}</div>
         <div className="intro-tag">{t('Find your balance.')}</div>

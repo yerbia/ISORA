@@ -891,6 +891,7 @@ body.chips-dragging *{cursor:inherit}
 .wprog i{display:block;height:100%;background:var(--acc);border-radius:99px;transition:width var(--med) var(--ease)}
 .exmedia{position:relative;border-radius:var(--r-lg);overflow:hidden;background:#fff;margin-bottom:12px}
 .exmedia img{width:100%;height:320px;object-fit:contain;display:block}
+.exmedia.detail img{height:220px}
 .exmedia .gifhint,.exmedia .giftoggle{
   position:absolute;bottom:9px;display:inline-flex;align-items:center;gap:4px;
   background:rgba(0,0,0,.45);color:#fff;border-radius:99px;padding:5px 11px;
@@ -908,11 +909,13 @@ body.chips-dragging *{cursor:inherit}
    broken-image glyph; same heights as the picture so the card does not jump. tap retries. */
 .exmedia.broken{background:var(--surface-2)}
 .exmedia-x{width:100%;height:320px;display:flex;align-items:center;justify-content:center;color:var(--label-3);font-size:34px}
+.exmedia.detail .exmedia-x{height:220px}
 .exmedia.compact .exmedia-x{height:120px}
 .exmedia.mini .exmedia-x{height:84px}
 /* a custom exercise's own video (components/CustomMedia.jsx): the same box as a picture, on black
    so a clip that does not fill it is letterboxed like any player */
 .exmedia video{width:100%;height:320px;object-fit:contain;display:block;background:#000}
+.exmedia.detail video{height:220px}
 .exmedia.compact video{height:120px}
 .exmedia.mini video{height:84px}
 .exmedia:has(> video){background:#000}

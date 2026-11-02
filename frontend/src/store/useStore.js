@@ -85,7 +85,7 @@ const gainedWorkoutMedia = (prev, next) => {
   return workoutMediaHashes(next).some(h => !had.has(h))
 }
 export const DEF = {
-  unit: 'kg', restSec: 90, restGame: true, restBlast: { best: 0, games: 0, lines: 0 }, profile: { name: '', avatar: '', goal: null, weekTarget: 0, heightCm: null, experience: null, focus: '', focusAreas: [] }, onboarded: false, buddy: { kind: null, name: '', born: null, level: 1, line: null }, restPauseSec: 15, sound: true, soundOnSilent: false, vibrateOnSilent: false, timerFlash: false, timedSetOvertime: false, keepAwake: true, lang: 'en',
+  unit: 'kg', restSec: 90, restGame: true, restBlast: { best: 0, games: 0, lines: 0 }, profile: { name: '', avatar: '', goal: null, weekTarget: 0, heightCm: null, experience: null, focus: '', focusAreas: [] }, onboarded: false, onboardingDraft: null, onboardingOfferLogin: false, buddy: { kind: null, name: '', born: null, level: 1, line: null }, restPauseSec: 15, sound: true, soundOnSilent: false, vibrateOnSilent: false, timerFlash: false, timedSetOvertime: false, keepAwake: true, lang: 'en',
   theme: 'light', accent: 'green', body: 'male', targetW: null,
   bodyweight: [], routines: [], week: {}, dayPlan: {},
   // A note per day off (#261): { [iso]: { tag, text, _ts } } (lib/day-notes.js). A noted day is
@@ -1550,6 +1550,15 @@ export const useStore = create((set, get) => {
           persist(restartedState(get().S), false)
           setSync({ pending: false, lastSynced: 0, lastError: null })
         }
+        // A Google/Supabase avatar becomes the profile's initial photo. A later explicit
+        // selection stores either an emoji or an empty photo and is never overwritten on boot.
+        const currentProfile = get().S.profile || {}
+        if (u.avatar && !currentProfile.avatar && currentProfile.photo === undefined) {
+          const next = clone(get().S)
+          next.profile = { ...next.profile, photo: u.avatar }
+          persist(next, false, false)
+          set({ S: next })
+        }
         // The mark, with the names of what this copy holds now (`pre`) — what the question is
         // about; whatever is logged later belongs to the account (runAdopt).
         if (adopt) writeAdopt({ uid: u.id, rejoined, alwaysAsk: !!adopt.alwaysAsk, pre: preOf(get().S) })
@@ -1957,9 +1966,15 @@ export const useStore = create((set, get) => {
         try { await api('/api/logout', { method: 'POST', body: '{}' }); logoutOwed(false) } catch { /* owed until it is answered */ }
         if (logoutOwed()) { finishBoot(); return }
       }
+      const sbSession = await currentSupabaseSession().catch(() => null)
+      const supabaseWeb = !!sbSession?.access_token
+      // ISORA starts with a local guest copy on a genuinely empty browser. This removes the
+      // account wall from first launch while preserving the existing sign-in screen for returning
+      // users who explicitly signed out or already have local data.
+      if (guestAllowed(cfg) && !supabaseWeb && !localStorage.getItem('gym_user') && !get().isGuest() && !hasData(get().S)) {
+        get().setGuest(true)
+      }
       try {
-        const sbSession = await currentSupabaseSession()
-        const supabaseWeb = !!sbSession?.access_token
         if (supabaseWeb) await bootstrapSupabaseSession(sbSession)
         const me = await api('/api/me')
         if (!me.user?.id) throw Object.assign(new Error('no user'), { status: 200, code: 'bad-response' })

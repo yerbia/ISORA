@@ -204,7 +204,8 @@ function Shell() {
   }, [inWorkout])
   // The chat owns the bottom of the screen as well: its composer sits where the tabs would be.
   // The first-launch card has no tabs either: they changed the route behind it.
-  const noTabs = inWorkout || loc.pathname === '/coach' || needsMobileOnboarding
+  const onboardingOpen = !MOBILE && ((!S.onboarded && !S.routines.length && !S.workouts.length && !S.active) || S.onboardingOfferLogin)
+  const noTabs = inWorkout || loc.pathname === '/coach' || needsMobileOnboarding || onboardingOpen
 
   const authed = user || isGuest
   if (!ready && !authed) return (

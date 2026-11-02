@@ -92,7 +92,7 @@ export default function Welcome({ onDone, replay = false }) {
   return <div className={'wel' + (replay ? ' replay' : '')} ref={root} role="dialog" aria-label={t('Welcome to ISORA')}
     onPointerDown={down} onPointerUp={up} onPointerCancel={() => { drag.current = null }}>
     <div className="wel-top">
-      <span className="wel-brand"><IsoraMark size={22} /><b>Entren.ar</b></span>
+      <span className="wel-brand"><img className="wel-logo" src="/logo.png" alt="" /><b>Entren.ar</b></span>
       <button type="button" className="wel-skip" onClick={onDone}>{last ? '' : t('Skip')}</button>
     </div>
     <div className="wel-deck">
@@ -134,7 +134,7 @@ function InstallScene({ dev }) {
     <div className="wel-phone-bar">{!ios && <><i /><i /><i /></>}</div>
     <div className="wel-phone-grid">
       {Array.from({ length: 11 }, (_, k) => <i key={k} style={{ '--i': k }} />)}
-      <span className="wel-phone-app"><IsoraMark size={30} /></span>
+      <span className="wel-phone-app"><img className="wel-phone-logo" src="/logo.png" alt="" /></span>
     </div>
     <div className="wel-phone-dock">{ios ? <><i /><span className="wel-phone-share"><Icon name="share" /></span><i /></> : <i className="wide" />}</div>
   </div>
@@ -209,7 +209,7 @@ function BalanceScene() {
         <circle cx="62" cy="62" r={R} fill="none" stroke="var(--surface-3)" strokeWidth="5" />
         <circle className="wel-ring" cx="62" cy="62" r={R} fill="none" stroke="var(--acc)" strokeWidth="5" strokeLinecap="round" transform="rotate(-90 62 62)" strokeDasharray={C} style={{ '--c': C }} />
       </svg>
-      <IsoraMark size={58} />
+      <img className="wel-balance-logo" src="/logo.png" alt="" />
     </div>
     <div className="wel-week">{[1, 1, 0, 1, 1, 0, 0].map((d, k) => <i key={k} className={d ? 'on' : ''} style={{ '--i': k }} />)}</div>
   </div>

@@ -7,13 +7,14 @@ export const GOAL_NAME = { strength: 'Build strength', muscle: 'Build muscle', f
 // Avatars to pick from besides your initial: plain, legible at 40 px, no faces.
 export const AVATARS = ['💪', '🏋️', '🔥', '⚡', '🦾', '🏃', '🧘', '🥇', '🐺', '🦁', '🌊', '🌱']
 
-export const emptyProfile = () => ({ name: '', avatar: '', goal: null, weekTarget: 0, heightCm: null, experience: null, focus: '', focusAreas: [] })
+export const emptyProfile = () => ({ name: '', avatar: '', photo: '', goal: null, weekTarget: 0, heightCm: null, experience: null, focus: '', focusAreas: [] })
 
 /** A stored profile made safe: unknown or malformed fields fall back to empty. */
 export function cleanProfile(p) {
   const o = p && typeof p === 'object' ? p : {}
   const name = typeof o.name === 'string' ? o.name.trim().slice(0, 40) : ''
   const avatar = typeof o.avatar === 'string' && AVATARS.includes(o.avatar) ? o.avatar : ''
+  const photo = typeof o.photo === 'string' && /^https:\/\//i.test(o.photo) ? o.photo : ''
   const goal = GOALS.includes(o.goal) ? o.goal : null
   const wt = Number(o.weekTarget)
   const weekTarget = Number.isInteger(wt) && wt >= 1 && wt <= 7 ? wt : 0
@@ -23,7 +24,7 @@ export function cleanProfile(p) {
   const experience = ['beginner', 'intermediate', 'advanced'].includes(o.experience) ? o.experience : null
   const focus = typeof o.focus === 'string' ? o.focus.trim().slice(0, 600) : ''
   const focusAreas = (Array.isArray(o.focusAreas) ? o.focusAreas : []).filter(a => typeof a === 'string' && a.trim()).map(a => a.trim().slice(0, 30)).slice(0, 4)
-  return { name, avatar, goal, weekTarget, heightCm, experience, focus, focusAreas }
+  return { name, avatar, photo, goal, weekTarget, heightCm, experience, focus, focusAreas }
 }
 
 /** The first letter of the first name, for the avatar when no picture is chosen. */

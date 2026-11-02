@@ -996,7 +996,7 @@ function ExerciseDetail({ ex, close }) {
         <Icon name={fav ? 'starFill' : 'star'} />
       </button>
     </div>
-    <Media ex={ex} />
+    <Media ex={ex} detail />
     <div className="row" style={{ gap: 6, flexWrap: 'wrap', margin: '10px 0' }}>
       {detailTags(ex).map(tg => <span key={tg.key} className={'tag' + (tg.acc ? ' acc' : '')}>{tg.icon && <Icon name={tg.icon} />}{tg.label}</span>)}
     </div>

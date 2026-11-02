@@ -1979,7 +1979,7 @@ const routes = {
     if (!s) return json(res, 401, { error: 'not signed in' });
     const { user } = s;
     const renew = s.bearer && s.exp - Date.now() < SESSION_DAYS * 86400000 / 2;
-    json(res, 200, { user: { id: user.id, name: user.name, admin: isAdmin(user) }, ...(renew ? { token: makeSession(user) } : {}) });
+    json(res, 200, { user: { id: user.id, name: user.name, avatar: user.avatar || null, admin: isAdmin(user) }, ...(renew ? { token: makeSession(user) } : {}) });
   },
 
   // Exchange a Supabase Auth session for the signed cookie used by the existing Node API.
@@ -1987,20 +1987,25 @@ const routes = {
     const auth = await supabaseAuth(req);
     if (!auth) return json(res, 401, { error: 'invalid Supabase session' });
     const su = auth.user;
+    const avatar = text(su.user_metadata?.avatar_url || su.user_metadata?.picture || '').trim();
+    const avatarUrl = /^https:\/\//i.test(avatar) ? avatar.slice(0, 1000) : '';
     let user = db.users.find(u => u.id === su.id);
     if (!user) {
       const name = text(su.user_metadata?.name || su.user_metadata?.full_name || su.email?.split('@')[0] || '');
-      user = { id: su.id, name: name.trim().slice(0, 40), email: normalizeEmail(su.email || ''), created: new Date().toISOString(), sv: 0 };
+      user = { id: su.id, name: name.trim().slice(0, 40), ...(avatarUrl ? { avatar: avatarUrl } : {}), email: normalizeEmail(su.email || ''), created: new Date().toISOString(), sv: 0 };
       db.users.push(user);
       claimFirstAdmin(req, user);
       // Supabase is the durable account store for this deployment. Vercel's function
       // filesystem may be read-only or ephemeral, so a local mirror must never turn a
       // successful Supabase login into an HTTP 500.
       try { saveDb(); } catch (e) { console.error('supabase user mirror not persisted:', e.message); }
+    } else if (!user.avatar && avatarUrl) {
+      user.avatar = avatarUrl;
+      try { saveDb(); } catch (e) { console.error('supabase avatar mirror not persisted:', e.message); }
     }
     if (user.disabled) return json(res, 403, { error: 'account disabled' });
     res.setHeader('Set-Cookie', sessionCookie(user));
-    json(res, 200, { user: { id: user.id, name: user.name, admin: isAdmin(user) } });
+    json(res, 200, { user: { id: user.id, name: user.name, avatar: user.avatar || null, admin: isAdmin(user) } });
   },
 
   'POST /api/register/options': async (req, res) => {

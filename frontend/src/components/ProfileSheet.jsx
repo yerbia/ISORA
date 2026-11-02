@@ -20,7 +20,7 @@ export function Avatar({ profile, size = 40, onClick, label }) {
   return (
     <Tag className={'avatar' + (p.avatar ? ' pic' : initial ? ' ini' : '')} style={{ '--sz': size + 'px' }}
       onClick={onClick} aria-label={onClick ? label : undefined} aria-hidden={onClick ? undefined : 'true'} type={onClick ? 'button' : undefined}>
-      {p.avatar || initial || <Icon name="personCircle" />}
+      {p.avatar ? p.avatar : p.photo ? <img className="avatar-photo" src={p.photo} alt="" /> : initial || <Icon name="personCircle" />}
     </Tag>
   )
 }
@@ -48,7 +48,7 @@ function ProfileSheet({ close }) {
 
     <h2 className="sect-t pf-h">{t('Avatar')}</h2>
     <div className="pf-grid">
-      <button type="button" className={'pf-opt' + (!p.avatar ? ' on' : '')} onClick={() => save({ avatar: '' })} aria-label={t('Your initial')}>
+      <button type="button" className={'pf-opt' + (!p.avatar ? ' on' : '')} onClick={() => save({ avatar: '', photo: '' })} aria-label={t('Your initial')}>
         <Avatar profile={{ name }} size={44} />
       </button>
       {AVATARS.map(a => <button type="button" key={a} className={'pf-opt' + (p.avatar === a ? ' on' : '')} onClick={() => save({ avatar: a })}>

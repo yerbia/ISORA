@@ -21,6 +21,7 @@
   opacity:0;animation:in-glow calc(1.6s * var(--t)) ease-out calc(.25s * var(--t)) forwards}
 .intro-stage{position:relative;display:flex;flex-direction:column;align-items:center;gap:18px;transform:translateY(-4vh)}
 .intro-markwrap{position:relative;width:132px;height:139px;display:flex;align-items:center;justify-content:center}
+.intro-logo{width:132px;height:132px;object-fit:contain;border-radius:30px;filter:drop-shadow(0 18px 30px color-mix(in srgb,var(--acc) 45%,transparent))}
 .intro-mark{width:132px;height:139px;overflow:visible;filter:drop-shadow(0 18px 30px color-mix(in srgb,var(--acc) 45%,transparent))}
 .in-bubble,.in-shine{transform-box:fill-box;transform-origin:50% 60%;transform:scale(0) rotate(-14deg);
   animation:in-bubble calc(.75s * var(--t)) var(--spring) calc(.12s * var(--t)) forwards}
@@ -68,7 +69,8 @@
 .today-hero:active{transform:scale(.985);transition-duration:.12s;transition-timing-function:ease-out}
 .today-hero .th-cta{animation:rise .6s var(--spring-soft) .25s both}
 .today-hero .th-av{animation:day-pop .6s var(--spring) .1s both}
-.today-hero.is-train .th-cta::after{content:'';position:absolute;inset:0;border-radius:inherit;border:2px solid var(--on-acc);opacity:0;animation:start-breathe 3.2s cubic-bezier(.2,.6,.3,1) 1.5s infinite}
+.today-hero.is-train .th-cta{overflow:visible}
+.today-hero.is-train .th-cta::after{content:'';position:absolute;inset:0;border-radius:inherit;border:2px solid var(--acc);opacity:0;will-change:transform,opacity;animation:start-breathe 3.2s cubic-bezier(.2,.6,.3,1) 1.2s infinite}
 .rb-reopen{animation:handle-up .6s var(--spring) both}
 @keyframes handle-up{from{transform:translate(-50%,40px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
 /* a view's blocks arrive in a short cascade, top to bottom (once, when the view opens) */

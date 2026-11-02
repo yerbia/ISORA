@@ -146,7 +146,7 @@ export function parseHeight(text) {
  * undefined to ask again. Skipping weight or height is allowed (null).
  */
 export const SCRIPT = [
-  { key: 'name', ask: 'Hi, I’m your ISORA coach. What should I call you?', quick: [],
+  { key: 'name', ask: 'Hi, I’m your ENTREN.AR coach. What should I call you?', quick: [],
     read: a => (a.trim() ? a.trim().split(/\s+/)[0].slice(0, 40) : undefined) },
   { key: 'goal', ask: 'Nice to meet you, {0}. What do you want from training?', quick: ['Build strength', 'Build muscle', 'Get fitter', 'Stay active'],
     read: a => ({ 'build strength': 'strength', 'build muscle': 'muscle', 'get fitter': 'fitness', 'stay active': 'active' })[a.trim().toLowerCase()] ?? matchGoal(a) },
@@ -204,11 +204,29 @@ const GOAL_FOCUS = {
   fitness: 'full-body work with short rests to build fitness and consistency',
   active: 'moving well and staying consistent, without grinding',
 }
+const PLAN_REASON_ES = {
+  ppl: 'una rutina de empuje, tirón y piernas, trabajando cada grupo muscular dos veces por semana',
+  'upper-lower': 'una división de tren superior e inferior de cuatro días, trabajando cada grupo muscular dos veces por semana',
+  '5x5': 'un programa 5×5 basado en los principales ejercicios con barra',
+  'full-body': 'sesiones de cuerpo completo, para que cada entrenamiento trabaje todo',
+}
+const GOAL_FOCUS_ES = {
+  strength: 'ejercicios compuestos pesados y aumentar la carga de forma progresiva',
+  muscle: 'cargas moderadas de 8 a 12 repeticiones, cerca del fallo y con un volumen constante',
+  fitness: 'entrenamientos de cuerpo completo, descansos cortos y constancia',
+  active: 'moverte bien y mantener la constancia sin llegar al agotamiento',
+}
 /** The scripted chat's closing words: what to focus on, in the same shape the model writes. */
-export function scriptedFocus(p) {
+export function scriptedFocus(p, lang = 'en') {
   const plan = pickPlan(p)
+  if (String(lang).toLowerCase().startsWith('es')) {
+    return {
+      focus: (p.name ? p.name + ', ' : '') + 'con ' + p.daysPerWeek + ' días por semana me centraría en ' + (GOAL_FOCUS_ES[p.goal] || GOAL_FOCUS_ES.fitness) + '. ENTREN.AR te ha preparado ' + PLAN_REASON_ES[plan] + (p.equipment.length ? ', adaptada a tu equipamiento' : '') + '. ' + (p.experience === 'beginner' ? 'Empieza con poco peso y aprende bien los movimientos; las cargas llegarán.' : 'Registra cada serie y deja que la progresión haga el trabajo.'),
+      focusAreas: p.goal === 'strength' ? ['ejercicios compuestos', 'sobrecarga progresiva'] : p.goal === 'muscle' ? ['volumen', 'conexión mente-músculo'] : p.goal === 'fitness' ? ['acondicionamiento', 'constancia'] : ['movilidad', 'constancia'],
+    }
+  }
   return {
-    focus: `${p.name ? p.name + ', ' : ''}with ${p.daysPerWeek} days a week I'd focus on ${GOAL_FOCUS[p.goal] || GOAL_FOCUS.fitness}. ISORA has set you up with ${PLAN_REASON[plan]}${p.equipment.length ? ', fitted to your equipment' : ''}. ${p.experience === 'beginner' ? 'Start light and learn the movements; the weights will come.' : 'Log every set and let progression do the work.'}`,
+    focus: `${p.name ? p.name + ', ' : ''}with ${p.daysPerWeek} days a week I'd focus on ${GOAL_FOCUS[p.goal] || GOAL_FOCUS.fitness}. ENTREN.AR has set you up with ${PLAN_REASON[plan]}${p.equipment.length ? ', fitted to your equipment' : ''}. ${p.experience === 'beginner' ? 'Start light and learn the movements; the weights will come.' : 'Log every set and let progression do the work.'}`,
     focusAreas: p.goal === 'strength' ? ['compound lifts', 'progressive overload'] : p.goal === 'muscle' ? ['volume', 'mind-muscle connection'] : p.goal === 'fitness' ? ['conditioning', 'consistency'] : ['mobility', 'consistency'],
   }
 }
