@@ -26,12 +26,15 @@ const USER_ERROR = {
 };
 const HTTP_FOR = { off: 503, busy: 409, cap: 429, consent: 403, shared: 409, unprivileged: 503 };
 
-export function coachRoutes({ json, readBody, readSession, requireAdmin }) {
+export function coachRoutes({ json, readBody, readSession, requestUser, requireAdmin }) {
+  // Web users authenticate with Supabase Bearer tokens. Keep the legacy helper as a fallback
+  // for paired/mobile clients and the small route harness used by the API tests.
+  const authenticate = requestUser || readSession;
   /** Every user route starts the same way: signed in, feature on, feature reachable. The class
    *  goes beside the words, as enqueue's refusal sends it: the app shows its own translated line
    *  for the class, and these English words only where it has none. */
-  const guard = (req, res) => {
-    const user = readSession(req);
+  const guard = async (req, res) => {
+    const user = await authenticate(req);
     if (!user) { json(res, 401, { error: 'not signed in' }); return null; }
     if (!cfgStore.isEnabled() || !cfgStore.isConnected()) { json(res, 503, { error: USER_ERROR.off, code: 'off' }); return null; }
     return user;
@@ -49,7 +52,7 @@ export function coachRoutes({ json, readBody, readSession, requireAdmin }) {
     // that reads it sits behind a session anyway, and on an invite-only instance which provider
     // this box is wired to is nobody's business who has not been let in.
     'GET /api/coach/disclosure': async (req, res) => {
-      if (!readSession(req)) return json(res, 401, { error: 'not signed in' });
+      if (!(await authenticate(req))) return json(res, 401, { error: 'not signed in' });
       const cfg = cfgStore.load();
       json(res, 200, {
         provider: cfg.provider,
@@ -60,14 +63,14 @@ export function coachRoutes({ json, readBody, readSession, requireAdmin }) {
     },
 
     'GET /api/coach/status': async (req, res) => {
-      const user = guard(req, res); if (!user) return;
+      const user = await guard(req, res); if (!user) return;
       // The chat composer's maxLength rides on this poll rather than a one-off fetch, so an
       // admin raising or lowering the limit reaches an open chat within one poll cycle.
       json(res, 200, { ...jobs.status(user.id), maxMessageLen: cfgStore.load().maxMessageLen });
     },
 
     'POST /api/coach/plan': async (req, res) => {
-      const user = guard(req, res); if (!user) return;
+      const user = await guard(req, res); if (!user) return;
       const body = await readBody(req);
       try {
         // The admin's configured length is the real limit; jobs.enqueue is where it is actually
@@ -84,7 +87,7 @@ export function coachRoutes({ json, readBody, readSession, requireAdmin }) {
     },
 
     'POST /api/coach/review': async (req, res) => {
-      const user = guard(req, res); if (!user) return;
+      const user = await guard(req, res); if (!user) return;
       const body = await readBody(req);
       try {
         const job = jobs.enqueue(user.id, {
@@ -98,7 +101,7 @@ export function coachRoutes({ json, readBody, readSession, requireAdmin }) {
 
     // One workout, read closely. Nothing to apply — the card is kept in the user's log.
     'POST /api/coach/debrief': async (req, res) => {
-      const user = guard(req, res); if (!user) return;
+      const user = await guard(req, res); if (!user) return;
       const body = await readBody(req);
       try {
         const job = jobs.enqueue(user.id, { kind: 'debrief', lang: body.lang, workoutId: body.workoutId ? String(body.workoutId).slice(0, 40) : null });
@@ -109,18 +112,18 @@ export function coachRoutes({ json, readBody, readSession, requireAdmin }) {
     /* How this profile sits against everyone else on the instance who opted in: medians only,
        at least three people, and nothing for a profile that does not share itself. */
     'GET /api/coach/cohort': async (req, res) => {
-      const user = guard(req, res); if (!user) return;
+      const user = await guard(req, res); if (!user) return;
       if (!cfgStore.load().community) return json(res, 200, { ok: false, enabled: false });
       json(res, 200, computeCohort(user.id));
     },
     'POST /api/coach/cohort/share': async (req, res) => {
-      const user = guard(req, res); if (!user) return;
+      const user = await guard(req, res); if (!user) return;
       const body = await readBody(req);
       json(res, 200, { ok: true, sharing: jobs.setShare(user.id, !!body.share) });
     },
 
     'POST /api/coach/pending/resolve': async (req, res) => {
-      const user = guard(req, res); if (!user) return;
+      const user = await guard(req, res); if (!user) return;
       const body = await readBody(req);
       json(res, 200, jobs.resolvePending(user.id, {
         accepted: Array.isArray(body.accepted) ? body.accepted : [],
@@ -132,7 +135,7 @@ export function coachRoutes({ json, readBody, readSession, requireAdmin }) {
     // Consent withdrawn, or the profile turned the Coach off: drop everything held server-side
     // for them at once, without waiting for a sync to carry the news (D5).
     'POST /api/coach/forget': async (req, res) => {
-      const user = readSession(req);
+      const user = await authenticate(req);
       if (!user) return json(res, 401, { error: 'not signed in' });
       jobs.clearUser(user.id);
       json(res, 200, { ok: true });
@@ -141,7 +144,7 @@ export function coachRoutes({ json, readBody, readSession, requireAdmin }) {
     /* ------------------------------ admin ------------------------------ */
 
     'GET /api/admin/coach': async (req, res) => {
-      if (!requireAdmin(req, res)) return;
+      if (!(await requireAdmin(req, res))) return;
       const cfg = cfgStore.load();
       const adapter = adapterFor(cfg.provider);
       // For the runtime-backed providers this asks "is the runtime there"; for an HTTPS one it
@@ -206,7 +209,7 @@ export function coachRoutes({ json, readBody, readSession, requireAdmin }) {
     },
 
     'POST /api/admin/coach/config': async (req, res) => {
-      if (!requireAdmin(req, res)) return;
+      if (!(await requireAdmin(req, res))) return;
       const body = await readBody(req);
       const patch = {};
       if (body.enabled !== undefined) patch.enabled = !!body.enabled;
@@ -265,7 +268,7 @@ export function coachRoutes({ json, readBody, readSession, requireAdmin }) {
     },
 
     'POST /api/admin/coach/test': async (req, res) => {
-      if (!requireAdmin(req, res)) return;
+      if (!(await requireAdmin(req, res))) return;
       const r = await jobs.testRun();
       json(res, 200, r);
     },
@@ -273,7 +276,7 @@ export function coachRoutes({ json, readBody, readSession, requireAdmin }) {
     /* The models the configured endpoint serves, so the card can offer a list rather than a
        text field that goes stale with every model release. HTTPS providers only. */
     'POST /api/admin/coach/models': async (req, res) => {
-      if (!requireAdmin(req, res)) return;
+      if (!(await requireAdmin(req, res))) return;
       const cfg = cfgStore.load();
       const adapter = adapterFor(cfg.provider);
       if (!adapter || typeof adapter.models !== 'function') return json(res, 200, { ok: false, error: 'this provider does not list models', models: [] });
@@ -291,7 +294,7 @@ export function coachRoutes({ json, readBody, readSession, requireAdmin }) {
        the configured provider actually declares, so a Codex key cannot be filed under Claude
        and then silently go nowhere at job time. */
     'POST /api/admin/coach/connect': async (req, res) => {
-      if (!requireAdmin(req, res)) return;
+      if (!(await requireAdmin(req, res))) return;
       const body = await readBody(req);
       const cfg = cfgStore.load();
       // A key may be filed for a provider that is not the active one, so the chips can be
@@ -314,7 +317,7 @@ export function coachRoutes({ json, readBody, readSession, requireAdmin }) {
     },
 
     'POST /api/admin/coach/disconnect': async (req, res) => {
-      if (!requireAdmin(req, res)) return;
+      if (!(await requireAdmin(req, res))) return;
       const body = await readBody(req);
       const provider = body.provider !== undefined ? String(body.provider) : cfgStore.load().provider;
       if (!cfgStore.PROVIDERS[provider]) return json(res, 400, { error: 'unknown provider' });
@@ -330,7 +333,7 @@ export function coachRoutes({ json, readBody, readSession, requireAdmin }) {
     /* Whose account this profile is about to spend. Its own route because both the Coach screen
        and the admin card must state it, and neither should be inferring it from settings. */
     'GET /api/coach/account': async (req, res) => {
-      const user = readSession(req);
+      const user = await authenticate(req);
       if (!user) return json(res, 401, { error: 'not signed in' });
       json(res, 200, cfgStore.accountFor(user.id));
     }
