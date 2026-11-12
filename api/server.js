@@ -1982,10 +1982,15 @@ const routes = {
   // ended the old one — and a revoked token never gets this far. A browser's cookie is left
   // alone: signing in renews it, as before.
   'GET /api/me': async (req, res) => {
+    // Supabase web sessions are bearer-authenticated. Do not make the browser depend on
+    // the exchanged HttpOnly cookie being available immediately after a reload: browsers can
+    // restore the Supabase session before the cookie jar has been restored, and the old
+    // session-only lookup then incorrectly sent the app to the guest screen. Keep this endpoint
+    // aligned with admin and Coach routes, which already accept both authentication forms.
+    const user = await requestUser(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
     const s = sessionOf(req);
-    if (!s) return json(res, 401, { error: 'not signed in' });
-    const { user } = s;
-    const renew = s.bearer && s.exp - Date.now() < SESSION_DAYS * 86400000 / 2;
+    const renew = s?.bearer && s.exp - Date.now() < SESSION_DAYS * 86400000 / 2;
     json(res, 200, { user: { id: user.id, name: user.name, avatar: user.avatar || null, admin: isAdmin(user) }, ...(renew ? { token: makeSession(user) } : {}) });
   },
 
