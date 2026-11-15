@@ -386,6 +386,7 @@ h4.sec{
 .btn.sm .icn{font-size:16px}
 .btn.xs{padding:5px 10px;width:auto;font-size:13px;border-radius:7px;gap:4px}
 .btn:disabled{opacity:.32;pointer-events:none}
+.pk-link{display:block;margin:10px auto 0;padding:4px 8px;background:none;border:0;color:var(--acc);font:inherit;text-align:center;cursor:pointer}
 .weekly-volume-toggle{padding-block:0}
 .weekly-volume-toggle .icn{transition:transform var(--fast) var(--ease)}
 .weekly-volume-toggle[aria-expanded="true"] .icn{transform:rotate(180deg)}

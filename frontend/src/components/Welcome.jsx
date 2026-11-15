@@ -32,7 +32,7 @@ const installBody = dev => dev.os === 'ios'
   : t('Tap ⋮ at the top of the browser, then “Add to Home screen”. Full screen, works offline, one tap away.')
 
 const SLIDES = (dev) => [
-  { key: 'meet', mood: 'new', react: null, title: 'Hola, soy Trino.', body: 'Tu compañero de Entren.ar. Te animo, vigilo tu semana y crezco mientras entrenas. Venga, tócame.' },
+  { key: 'meet', mood: 'new', react: null, title: 'Hola, soy Trino.', body: 'Tu compañero de Entren.ar. Te animo, vigilo tu semana y crezco mientras entrenas. Vamos, tócame.' },
   { key: 'blast', mood: 'hyped', react: 'surprise', title: t('Every rest is a round of Rest Blast.'), body: t('Three minutes of puzzle while you rest. Easy pieces early, harder later. Clear lines, beat your best, then back to the bar.') },
   { key: 'plan', mood: 'active', react: 'nod', title: t('A plan that keeps up.'), body: t('Tell me your goal and I build the plan. When you’re ready I add weight, and when a lift stalls I switch the variation.') },
   ...(dev ? [{ key: 'install', mood: 'hyped', react: 'nod', title: t('Put ISORA on your home screen.'), body: installBody(dev) }] : []),
