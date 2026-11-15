@@ -57,17 +57,19 @@ export default function CoachIntake() {
   const nav = useNavigate()
   const [params] = useSearchParams()
   const editing = params.get('edit') === '1'
+  const forcedConsent = params.get('consent') === '1'
   const S = useStore(s => s.S)
   const user = useStore(s => s.user)
   const config = useStore(s => s.config)
   const coachMode = useStore(s => s.coachLocal?.mode)
   const update = useStore(s => s.update)
+  const pushState = useStore(s => s.pushState)
   const toast = useUI(s => s.toast)
-  const [needConsent] = useState(() => !editing && !hasConsent(S))
+  const [needConsent] = useState(() => !editing && (forcedConsent || !hasConsent(S)))
   // An athlete who already answered the intake and only lacks the CURRENT consent (the wording
   // changed and CONSENT_VERSION moved) reads the new terms and goes back to the Coach. Without
   // this the redirect from the chat replayed all seven questions and ended in a new plan request.
-  const [reconsentOnly] = useState(() => !editing && !hasConsent(S) && !!S.coach?.profile)
+  const [reconsentOnly] = useState(() => !editing && (forcedConsent || !hasConsent(S)) && !!S.coach?.profile)
   const STEPS = reconsentOnly ? ['consent'] : [...(needConsent ? ['consent'] : []), 'goal', 'experience', 'days', 'length', 'equipment', 'limits', 'extras']
   const [step, setStep] = useState(0)
   const [busy, setBusy] = useState(false)
@@ -111,6 +113,9 @@ export default function CoachIntake() {
     if (editing) { toast(t('Saved')); nav('/coach'); return }
     setBusy(true)
     try {
+      // Consent is stored in the synced profile state. Wait for that write before asking the
+      // server to create the first plan, otherwise the server-side gate can race the debounce.
+      if (pushState) await pushState()
       await requestPlan(profile)
       nav('/coach', { replace: true })
     } catch (e) {

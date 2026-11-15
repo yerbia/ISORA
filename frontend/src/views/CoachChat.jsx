@@ -116,7 +116,7 @@ export default function CoachChat() {
     } catch (e) {
       // A server that refuses the job says so in English, with its class beside it: the class
       // picks the translated line. One with no line here ('shared') keeps the server's words.
-      toast(JOB_ERRORS[e.data?.code] || e.message || t('Could not ask the Coach'))
+      if (!consentRequired(e)) toast(JOB_ERRORS[e.data?.code] || e.message || t('Could not ask the Coach'))
     }
     setBusy(false)
   }
@@ -127,8 +127,18 @@ export default function CoachChat() {
       await fn()
       update(s => appendChat(s, { role: 'user', kind: 'text', text: line }))
       refresh()
-    } catch (e) { toast(JOB_ERRORS[e.data?.code] || e.message || t('Could not ask the Coach')) }
+    } catch (e) {
+      if (!consentRequired(e)) toast(JOB_ERRORS[e.data?.code] || e.message || t('Could not ask the Coach'))
+    }
     setBusy(false)
+  }
+  // The server is the final authority for consent. A stale tab or a failed previous sync can
+  // leave the local copy looking ready while the server still refuses the job. In that case the
+  // refusal is a navigation event, not a toast the user cannot act on.
+  const consentRequired = e => {
+    if (e?.data?.code !== 'consent' && e?.code !== 'consent') return false
+    nav('/coach/intake?consent=1', { replace: true })
+    return true
   }
   const askReview = () => ask(() => requestReview(''), t('Have a look at my training and tell me what you would change.'))
   const lastWorkout = (S.workouts || []).filter(w => w && w.d).at(-1) || null
