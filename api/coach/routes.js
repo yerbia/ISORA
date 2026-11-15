@@ -26,16 +26,19 @@ const USER_ERROR = {
 };
 const HTTP_FOR = { off: 503, busy: 409, cap: 429, consent: 403, shared: 409, unprivileged: 503 };
 
-export function coachRoutes({ json, readBody, readSession, requestUser, requireAdmin }) {
+export function coachRoutes({ json, readBody, readSession, requestUser, requireAdmin, coachPersistence }) {
   // Web users authenticate with Supabase Bearer tokens. Keep the legacy helper as a fallback
   // for paired/mobile clients and the small route harness used by the API tests.
   const authenticate = requestUser || readSession;
+  const loadPersisted = () => coachPersistence?.load();
+  const savePersisted = () => coachPersistence?.save(cfgStore.load());
   /** Every user route starts the same way: signed in, feature on, feature reachable. The class
    *  goes beside the words, as enqueue's refusal sends it: the app shows its own translated line
    *  for the class, and these English words only where it has none. */
   const guard = async (req, res) => {
     const user = await authenticate(req);
     if (!user) { json(res, 401, { error: 'not signed in' }); return null; }
+    await loadPersisted();
     if (!cfgStore.isEnabled() || !cfgStore.isConnected()) { json(res, 503, { error: USER_ERROR.off, code: 'off' }); return null; }
     return user;
   };
@@ -53,6 +56,7 @@ export function coachRoutes({ json, readBody, readSession, requestUser, requireA
     // this box is wired to is nobody's business who has not been let in.
     'GET /api/coach/disclosure': async (req, res) => {
       if (!(await authenticate(req))) return json(res, 401, { error: 'not signed in' });
+      await loadPersisted();
       const cfg = cfgStore.load();
       json(res, 200, {
         provider: cfg.provider,
@@ -145,6 +149,7 @@ export function coachRoutes({ json, readBody, readSession, requestUser, requireA
 
     'GET /api/admin/coach': async (req, res) => {
       if (!(await requireAdmin(req, res))) return;
+      await loadPersisted();
       const cfg = cfgStore.load();
       const adapter = adapterFor(cfg.provider);
       // For the runtime-backed providers this asks "is the runtime there"; for an HTTPS one it
@@ -210,6 +215,7 @@ export function coachRoutes({ json, readBody, readSession, requestUser, requireA
 
     'POST /api/admin/coach/config': async (req, res) => {
       if (!(await requireAdmin(req, res))) return;
+      await loadPersisted();
       const body = await readBody(req);
       const patch = {};
       if (body.enabled !== undefined) patch.enabled = !!body.enabled;
@@ -264,11 +270,13 @@ export function coachRoutes({ json, readBody, readSession, requestUser, requireA
         );
       }
       cfgStore.save(patch);
+      await savePersisted();
       json(res, 200, { ok: true });
     },
 
     'POST /api/admin/coach/test': async (req, res) => {
       if (!(await requireAdmin(req, res))) return;
+      await loadPersisted();
       const r = await jobs.testRun();
       json(res, 200, r);
     },
@@ -277,6 +285,7 @@ export function coachRoutes({ json, readBody, readSession, requestUser, requireA
        text field that goes stale with every model release. HTTPS providers only. */
     'POST /api/admin/coach/models': async (req, res) => {
       if (!(await requireAdmin(req, res))) return;
+      await loadPersisted();
       const cfg = cfgStore.load();
       const adapter = adapterFor(cfg.provider);
       if (!adapter || typeof adapter.models !== 'function') return json(res, 200, { ok: false, error: 'this provider does not list models', models: [] });
@@ -295,6 +304,7 @@ export function coachRoutes({ json, readBody, readSession, requestUser, requireA
        and then silently go nowhere at job time. */
     'POST /api/admin/coach/connect': async (req, res) => {
       if (!(await requireAdmin(req, res))) return;
+      await loadPersisted();
       const body = await readBody(req);
       const cfg = cfgStore.load();
       // A key may be filed for a provider that is not the active one, so the chips can be
@@ -313,15 +323,18 @@ export function coachRoutes({ json, readBody, readSession, requestUser, requireA
       cfgStore.saveAuth(provider, {
         type, account: String(body.account || '').slice(0, 120), data: cfgStore.encrypt({ token }), connectedAt: new Date().toISOString()
       });
+      await savePersisted();
       json(res, 200, { ok: true });
     },
 
     'POST /api/admin/coach/disconnect': async (req, res) => {
       if (!(await requireAdmin(req, res))) return;
+      await loadPersisted();
       const body = await readBody(req);
       const provider = body.provider !== undefined ? String(body.provider) : cfgStore.load().provider;
       if (!cfgStore.PROVIDERS[provider]) return json(res, 400, { error: 'unknown provider' });
       cfgStore.saveAuth(provider, null);
+      await savePersisted();
       json(res, 200, { ok: true });
     },
 

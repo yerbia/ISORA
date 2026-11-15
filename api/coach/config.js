@@ -177,6 +177,12 @@ export function save(patch) {
   atomicWrite(FILE, JSON.stringify(next, null, 2), 0o600);
   return next;
 }
+// Replace the local snapshot with the durable instance snapshot. The local file remains a
+// fallback/cache for self-hosted installations and for booting while Supabase is unavailable.
+export function replace(snapshot) {
+  if (!isPlainObj(snapshot)) return load();
+  return save(snapshot);
+}
 // Test seam: forget the in-memory copy so the next load() re-reads from disk.
 export function reset() { cache = null; keyCache = null; }
 

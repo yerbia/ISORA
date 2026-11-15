@@ -36,6 +36,7 @@ import { stampPut } from './sync-stamps.js';
 import { atomicWrite as durableWrite } from './durable.js';
 import { excusedOn, nudgeFor, nudgeWindowOpen, toneOf } from './nudge.js';
 import { createClient } from '@supabase/supabase-js';
+import { createCoachPersistence } from './coach/persistence.js';
 
 const PORT = +(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || '/data';
@@ -44,6 +45,10 @@ const ORIGIN = process.env.ORIGIN || 'http://localhost:8080';
 const RP_NAME = process.env.RP_NAME || 'openGym';
 const SUPABASE_URL = String(process.env.SUPABASE_URL || '').trim();
 const SUPABASE_ANON_KEY = String(process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || '').trim();
+const SUPABASE_SERVICE_ROLE_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+// The service key is server-only and is used solely for the encrypted, instance-wide Coach
+// configuration. Without it, the API keeps the existing local-file fallback.
+const coachPersistence = createCoachPersistence({ url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY });
 // Admin dashboard (issue): admins are matched by uid (or the admin flag FIRST_USER_ADMIN sets);
 // INVITE_ONLY gates new signups behind a code the admin generates. Off by default, so a fresh
 // self-hosted instance stays open.
@@ -1947,6 +1952,7 @@ const routes = {
   // single flag every piece of Coach UI hangs off, so an unconfigured instance is byte-for-byte
   // the app it was before the feature existed.
   'GET /api/config': async (req, res) => {
+    await coachPersistence?.load();
     // The Coach block names the provider this instance is wired to — the same fact
     // /api/coach/disclosure refuses to hand out without a session, and for the same reason: on an
     // invite-only instance, which model this box talks to is nobody's business who has not been
@@ -2652,7 +2658,7 @@ const routes = {
   // Routes live in coach/routes.js and are handed the helpers above rather than importing
   // them: they are closures over db and SECRET, and passing them in keeps that module free of
   // a cycle. Every one of them is inert while the feature is unconfigured.
-  ...coachRoutes({ json, readBody, readSession, requestUser, requireAdmin }),
+  ...coachRoutes({ json, readBody, readSession, requestUser, requireAdmin, coachPersistence }),
 
   /* ---------- photos & videos ---------- */
   // Absent, not refusing, when MEDIA_UPLOADS=0: a 404 is what a server from before the feature

@@ -21,6 +21,16 @@ create table if not exists public.push_subscriptions (
   primary key (user_id, endpoint)
 );
 
+-- One instance-wide Coach configuration. Credentials inside config are already encrypted by
+-- the API with its DATA_DIR secret; clients never access this table directly.
+create table if not exists public.coach_config (
+  id text primary key check (id = 'default'),
+  config jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.coach_config enable row level security;
+
 alter table public.profiles enable row level security;
 alter table public.workout_states enable row level security;
 alter table public.push_subscriptions enable row level security;
