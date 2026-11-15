@@ -641,12 +641,21 @@ async function supabaseAuth(req) {
 async function requestUser(req) {
   const sessionUser = readSession(req);
   if (sessionUser) return sessionUser;
-  const supabaseUser = (await supabaseAuth(req))?.user;
+  const auth = await supabaseAuth(req);
+  const supabaseUser = auth?.user;
   if (!supabaseUser) return null;
   // Keep server-side flags (admin/disabled/name) authoritative while accepting the Supabase
   // identity as proof of authentication. This matters when a Bearer request arrives after the
   // legacy cookie has expired: an admin must not silently become a normal user.
-  return db.users.find(user => user.id === supabaseUser.id) || supabaseUser;
+  const local = db.users.find(user => user.id === supabaseUser.id);
+  if (local) return local;
+  // A cold/ephemeral instance may not have rebuilt its legacy mirror yet. Read the
+  // server-managed profile so a persisted admin flag remains authoritative.
+  try {
+    const { data: profile } = await auth.client.from('profiles').select('id,name,admin,disabled').eq('id', supabaseUser.id).maybeSingle();
+    if (profile) return { ...supabaseUser, ...profile };
+  } catch { /* the auth identity is still valid; fall back to its public fields */ }
+  return supabaseUser;
 }
 // Guard for /api/admin/* — resolves the caller and 401/403s if they aren't an admin.
 async function requireAdmin(req, res) {
@@ -2034,7 +2043,12 @@ const routes = {
     const name = text(body.name).trim().slice(0, 40);
     if (!name) return json(res, 400, { error: 'name required' });
     const code = text(body.code).trim().toUpperCase();
-    if (INVITE_ONLY && !db.invites.some(i => i.code === code && !i.usedBy && !i.revoked)) {
+    let inviteAvailable = db.invites.some(i => i.code === code && !i.usedBy && !i.revoked);
+    if (INVITE_ONLY && adminPersistence) {
+      try { inviteAvailable = (await adminPersistence.invites()).some(i => i.code === code && !i.usedBy && !i.revoked); }
+      catch (e) { console.error('invite lookup in Supabase:', e.message); }
+    }
+    if (INVITE_ONLY && !inviteAvailable) {
       // The rejected code itself is never recorded — a near-miss guess in the log is a liability.
       audit(req, 'auth.register.denied', { ok: false, name, msg: 'invite-rejected' });
       return json(res, 403, { error: 'a valid invite code is required', code: 'invite' });
@@ -2084,14 +2098,25 @@ const routes = {
     // Re-check the invite at the last moment (it may have been used/revoked since options), then burn it.
     let invite = null;
     if (INVITE_ONLY) {
-      invite = db.invites.find(i => i.code === c.code && !i.usedBy && !i.revoked);
+      if (adminPersistence) {
+        try { invite = (await adminPersistence.invites()).find(i => i.code === c.code && !i.usedBy && !i.revoked) || null; }
+        catch (e) { console.error('invite recheck in Supabase:', e.message); }
+      } else invite = db.invites.find(i => i.code === c.code && !i.usedBy && !i.revoked);
       if (!invite) {
         audit(req, 'auth.register.fail', { ok: false, name: c.name, msg: 'invite-invalid' });
         return json(res, 403, { error: 'invite code is no longer valid, ask for a new one', code: 'invite' });
       }
     }
     const user = { id: c.uid, name: c.name, created: new Date().toISOString() };
-    if (invite) { user.invitedBy = invite.code; invite.usedBy = user.id; invite.usedAt = user.created; }
+    if (invite) {
+      user.invitedBy = invite.code;
+      if (adminPersistence) {
+        if (!(await adminPersistence.useInvite(invite.code, user.id, user.created))) {
+          audit(req, 'auth.register.fail', { ok: false, name: c.name, msg: 'invite-invalid' });
+          return json(res, 403, { error: 'invite code is no longer valid, ask for a new one', code: 'invite' });
+        }
+      } else { invite.usedBy = user.id; invite.usedAt = user.created; }
+    }
     claimFirstAdmin(req, user);
     db.users.push(user);
     db.creds.push({
@@ -2283,6 +2308,9 @@ const routes = {
       delete body.state.active;
       const { error } = await sa.client.from('workout_states').upsert({ user_id: user.id, state: body.state, updated_at: new Date().toISOString() });
       if (error) return json(res, 500, { error: error.message });
+      // Coach jobs are file-backed and synchronous; mirror the durable state so they see
+      // consent and training data on the next request, including after a process restart.
+      try { atomicWrite(stateFile(user.id), JSON.stringify(body.state), 0o600); } catch (e) { console.error('state mirror failed:', e.message); }
       return json(res, 200, { ok: true, ts: body.state._ts || null });
     }
     // An object with nothing of the profile in it empties the document with the counter left
@@ -2610,6 +2638,13 @@ const routes = {
 
   'GET /api/admin/invites': async (req, res) => {
     if (!(await requireAdmin(req, res))) return;
+    if (adminPersistence) {
+      try {
+        const rows = await adminPersistence.invites();
+        const names = new Map((await adminPersistence.users()).map(u => [u.id, u.name]));
+        return json(res, 200, { invites: rows.map(i => ({ ...i, usedByName: i.usedBy ? names.get(i.usedBy) || null : null })), invite_only: INVITE_ONLY });
+      } catch (e) { console.error('admin invites from Supabase:', e.message); }
+    }
     // resolve usedBy uid → name for display
     const invites = db.invites.map(i => ({
       ...i, usedByName: i.usedBy ? (db.users.find(u => u.id === i.usedBy) || {}).name || null : null
@@ -2627,6 +2662,13 @@ const routes = {
     // in db.json keep working — validation is an exact string compare, never a length or format check.
     do { code = crypto.randomBytes(8).toString('hex').toUpperCase(); } while (db.invites.some(i => i.code === code));
     const invite = { code, note: text(body.note).slice(0, 60), createdBy: admin.id, created: new Date().toISOString() };
+    if (adminPersistence) {
+      try {
+        await adminPersistence.createInvite(invite);
+        audit(req, 'admin.invite.create', { user: admin, msg: code });
+        return json(res, 200, { invite });
+      } catch (e) { console.error('admin invite create in Supabase:', e.message); }
+    }
     db.invites.push(invite);
     saveDb();
     audit(req, 'admin.invite.create', { user: admin, msg: code });
@@ -2636,6 +2678,17 @@ const routes = {
   'POST /api/admin/invites/revoke': async (req, res) => {
     const admin = await requireAdmin(req, res); if (!admin) return;
     const body = await readBody(req);
+    if (adminPersistence) {
+      try {
+        const rows = await adminPersistence.invites();
+        const remote = rows.find(i => i.code === text(body.code).toUpperCase());
+        if (!remote) return json(res, 404, { error: 'no such code' });
+        if (remote.usedBy) return json(res, 400, { error: 'already used, cannot revoke' });
+        await adminPersistence.revokeInvite(remote.code);
+        audit(req, 'admin.invite.revoke', { user: admin, msg: remote.code });
+        return json(res, 200, { ok: true });
+      } catch (e) { console.error('admin invite revoke in Supabase:', e.message); }
+    }
     const inv = db.invites.find(i => i.code === text(body.code).toUpperCase());
     if (!inv) return json(res, 404, { error: 'no such code' });
     if (inv.usedBy) return json(res, 400, { error: 'already used, cannot revoke' });

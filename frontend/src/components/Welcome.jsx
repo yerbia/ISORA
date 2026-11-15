@@ -41,7 +41,7 @@ const SLIDES = (dev) => [
 /** The install screen belongs in a phone's browser tab only (never from the icon, never the native app). */
 const installDevice = () => (PERSONAL && !MOBILE && shouldOfferInstall() ? deviceOf() : null)
 
-export default function Welcome({ onDone, replay = false }) {
+export default function Welcome({ onDone, onSignIn, replay = false }) {
   const [dev] = useState(installDevice)
   const slides = SLIDES(dev)
   const [i, setI] = useState(0)
@@ -93,7 +93,10 @@ export default function Welcome({ onDone, replay = false }) {
     onPointerDown={down} onPointerUp={up} onPointerCancel={() => { drag.current = null }}>
     <div className="wel-top">
       <span className="wel-brand"><img className="wel-logo" src="/logo.png" alt="" /><b>Entren.ar</b></span>
-      <button type="button" className="wel-skip" onClick={onDone}>{last ? '' : t('Skip')}</button>
+      <div className="wel-actions">
+        {onSignIn && <button type="button" className="wel-signin" onClick={onSignIn}>{t('Sign in')}</button>}
+        <button type="button" className="wel-skip" onClick={onDone}>{last ? '' : t('Skip')}</button>
+      </div>
     </div>
     <div className="wel-deck">
       <Slide key={s.key} s={s} dir={dir} dev={dev} rx={rx} phase="in" />

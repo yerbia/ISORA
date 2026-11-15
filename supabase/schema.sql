@@ -47,6 +47,18 @@ create table if not exists public.audit_events (
 
 alter table public.audit_events enable row level security;
 
+create table if not exists public.invites (
+  code text primary key,
+  note text not null default '',
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  used_by uuid references auth.users(id) on delete set null,
+  used_at timestamptz,
+  revoked boolean not null default false
+);
+
+alter table public.invites enable row level security;
+
 alter table public.profiles enable row level security;
 alter table public.workout_states enable row level security;
 alter table public.push_subscriptions enable row level security;

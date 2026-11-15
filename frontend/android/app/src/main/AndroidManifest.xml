@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-
     <!-- Health Connect (#200): its client library asks for Android 8 and Health Connect itself
          needs 9. The app keeps running on older phones, where HealthConnectPlugin answers
          "unsupported" before touching the library. -->

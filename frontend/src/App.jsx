@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useLayoutEffect, useRef } from 'react'
-import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation, useNavigationType } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation, useNavigationType, useParams } from 'react-router-dom'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { bindUI } from './components/ui.jsx'
@@ -10,6 +10,7 @@ import { effectiveLang } from './lib/default-lang.js'
 import { setPlayOnSilent, setVibrate, setAlarmBuzzer } from './lib/sound.js'
 import { buzzAsAlarm } from './lib/rest-alert.js'
 import { setNav } from './lib/nav.js'
+import { ROUTES, canonicalRoute } from './lib/routes.js'
 import { setSystemBarsLight } from './lib/system-bars.js'
 import { initBackButton } from './lib/back.js'
 import { useWakeLock } from './lib/wakelock.js'
@@ -57,8 +58,18 @@ const CoachSetup = lazy(() => import('./views/CoachSetup.jsx'))
 const scrollPositions = new Map()
 // How deep a route is, for the direction its page slides in from (motion.css): the tabs are the
 // surface, a settings page or a routine is one down, a settings sub-page two.
-const TOP = new Set(['/home', '/plan', '/workout', '/stats', '/library', '/checkin', '/coach'])
+const TOP = new Set([ROUTES.home, ROUTES.plan, ROUTES.workout, ROUTES.stats, ROUTES.library, ROUTES.checkin, ROUTES.coach])
 const depthOf = path => (TOP.has(path) ? 0 : path.split('/').filter(Boolean).length)
+
+function LegacyRoutineRedirect() {
+  const { id } = useParams()
+  return <Navigate to={'/plan/rutina/' + id} replace />
+}
+
+function LegacySettingsRedirect() {
+  const { page } = useParams()
+  return <Navigate to={ROUTES.settings + '/' + page} replace />
+}
 
 bindUI(useUI)   // lets the shared controls open sheets without importing the store at module scope
 
@@ -92,6 +103,12 @@ function Shell() {
   const isGuest = useStore(s => s.isGuest())
   const needsMobileOnboarding = useStore(s => s.needsMobileOnboarding)
   const langV = useLang()   // re-renders the whole shell when the language (pack) changes
+  // Old English hashes remain valid, but every browser-facing navigation settles on the
+  // Spanish canonical path. This also upgrades bookmarks and notification links safely.
+  const canonical = canonicalRoute(loc.pathname)
+  useEffect(() => {
+    if (canonical !== loc.pathname) navigate(canonical + loc.search, { replace: true })
+  }, [canonical, loc.pathname, loc.search, navigate])
   useEffect(() => { setNav(navigate) }, [navigate])
   const lastEditPath = useRef(loc.pathname)
   // Any in-app route exit, browser back included, returns to the persisted draft and asks for a
@@ -197,7 +214,7 @@ function Shell() {
   // A running workout has the whole screen (v1.3.11): no tab bar, and the rest bar docks to the
   // bottom edge in its place. Its header's ⌄ goes back to the app, where the tab bar's Resume
   // brings it back.
-  const inWorkout = loc.pathname === '/workout' && !!S.active
+  const inWorkout = canonical === ROUTES.workout && !!S.active
   useEffect(() => {
     document.body.classList.toggle('no-tabbar', inWorkout)
     return () => document.body.classList.remove('no-tabbar')
@@ -205,7 +222,7 @@ function Shell() {
   // The chat owns the bottom of the screen as well: its composer sits where the tabs would be.
   // The first-launch card has no tabs either: they changed the route behind it.
   const onboardingOpen = !MOBILE && ((!S.onboarded && !S.routines.length && !S.workouts.length && !S.active) || S.onboardingOfferLogin)
-  const noTabs = inWorkout || loc.pathname === '/coach' || needsMobileOnboarding || onboardingOpen
+  const noTabs = inWorkout || canonical === ROUTES.coach || needsMobileOnboarding || onboardingOpen
 
   const authed = user || isGuest
   if (!ready && !authed) return (
@@ -227,31 +244,46 @@ function Shell() {
           <Suspense fallback={null}>
           {!authed ? <Login /> : needsMobileOnboarding ? <MobileOnboarding /> : (
             <Routes>
-              <Route path="/home" element={<Home />} />
+              <Route path={ROUTES.home} element={<Home />} />
               {/* Gym check-in — switched off in Settings, the route falls through to the
                   catch-all redirect below. */}
-              {S.checkIn !== false && <Route path="/checkin" element={<CheckIn />} />}
-              <Route path="/plan" element={<Plan />} />
-              <Route path="/plan/r/:id" element={<RoutineEdit />} />
-              <Route path="/workout" element={<Workout />} />
-              <Route path="/stats" element={<Stats />} />
-              <Route path="/history" element={<History />} />
-              <Route path="/library" element={<Library />} />
-              <Route path="/muscles" element={<Muscles />} />
-              <Route path="/structural-balance" element={<StructuralBalance />} />
-              <Route path="/progress-photos" element={<ProgressPhotos />} />
-              <Route path="/measurements" element={<Measurements />} />
-              <Route path="/settings" element={<SettingsRoute />} />
-              <Route path="/settings/:page" element={<SettingsRoute />} />
+              {S.checkIn !== false && <Route path={ROUTES.checkin} element={<CheckIn />} />}
+              <Route path={ROUTES.plan} element={<Plan />} />
+              <Route path="/plan/rutina/:id" element={<RoutineEdit />} />
+              <Route path={ROUTES.workout} element={<Workout />} />
+              <Route path={ROUTES.stats} element={<Stats />} />
+              <Route path={ROUTES.history} element={<History />} />
+              <Route path={ROUTES.library} element={<Library />} />
+              <Route path={ROUTES.muscles} element={<Muscles />} />
+              <Route path={ROUTES.balance} element={<StructuralBalance />} />
+              <Route path={ROUTES.photos} element={<ProgressPhotos />} />
+              <Route path={ROUTES.measurements} element={<Measurements />} />
+              <Route path={ROUTES.settings} element={<SettingsRoute />} />
+              <Route path={ROUTES.settings + '/:page'} element={<SettingsRoute />} />
               {/* The Coach screens gate themselves on the instance config; the routes exist
                   unconditionally so a deep link from a notification lands somewhere sane
                   rather than on the catch-all. */}
-              <Route path="/coach" element={<CoachChat />} />
+              <Route path={ROUTES.coach} element={<CoachChat />} />
               <Route path="/coach/intake" element={<CoachIntake />} />
               <Route path="/coach/proposal" element={<Navigate to="/coach" replace />} />
               <Route path="/coach/setup" element={<CoachSetup />} />
-              <Route path="/admin" element={user?.admin ? <Admin /> : <Navigate to="/home" replace />} />
-              <Route path="*" element={<Navigate to="/home" replace />} />
+              <Route path={ROUTES.admin} element={user?.admin ? <Admin /> : <Navigate to={ROUTES.home} replace />} />
+              {/* Legacy links: canonicalRoute upgrades them, while these aliases keep the
+                  transition renderable instead of falling through to the home redirect. */}
+              <Route path="/home" element={<Navigate to={ROUTES.home} replace />} />
+              <Route path="/workout" element={<Navigate to={ROUTES.workout} replace />} />
+              <Route path="/stats" element={<Navigate to={ROUTES.stats} replace />} />
+              <Route path="/history" element={<Navigate to={ROUTES.history} replace />} />
+              <Route path="/library" element={<Navigate to={ROUTES.library} replace />} />
+              <Route path="/muscles" element={<Navigate to={ROUTES.muscles} replace />} />
+              <Route path="/structural-balance" element={<Navigate to={ROUTES.balance} replace />} />
+              <Route path="/progress-photos" element={<Navigate to={ROUTES.photos} replace />} />
+              <Route path="/measurements" element={<Navigate to={ROUTES.measurements} replace />} />
+              <Route path="/settings" element={<Navigate to={ROUTES.settings} replace />} />
+              <Route path="/settings/:page" element={<LegacySettingsRedirect />} />
+              <Route path="/checkin" element={<Navigate to={ROUTES.checkin} replace />} />
+              <Route path="/plan/r/:id" element={<LegacyRoutineRedirect />} />
+              <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
             </Routes>
           )}
           </Suspense>

@@ -28,6 +28,24 @@ export function createAdminPersistence({ url, serviceRoleKey, log = console } = 
   const warn = error => log.warn?.('Supabase admin persistence unavailable:', error?.message || error);
 
   return {
+    async invites() {
+      const { data, error } = await client.from('invites').select('code,note,created_by,created_at,used_by,used_at,revoked').order('created_at', { ascending: true });
+      if (error) throw error;
+      return (data || []).map(i => ({ code: i.code, note: i.note || '', createdBy: i.created_by || null, created: i.created_at || null, usedBy: i.used_by || null, usedAt: i.used_at || null, revoked: !!i.revoked }));
+    },
+    async createInvite(invite) {
+      const { error } = await client.from('invites').insert({ code: invite.code, note: invite.note || '', created_by: invite.createdBy || null, created_at: invite.created });
+      if (error) throw error;
+    },
+    async revokeInvite(code) {
+      const { error } = await client.from('invites').update({ revoked: true }).eq('code', code).is('used_by', null);
+      if (error) throw error;
+    },
+    async useInvite(code, userId, usedAt) {
+      const { data, error } = await client.from('invites').update({ used_by: userId, used_at: usedAt }).eq('code', code).is('used_by', null).eq('revoked', false).select('code').maybeSingle();
+      if (error) throw error;
+      return !!data;
+    },
     async users() {
       const [{ data: profiles, error: pe }, { data: states, error: se }] = await Promise.all([
         client.from('profiles').select('id,name,admin,disabled,created_at').order('created_at', { ascending: true }),

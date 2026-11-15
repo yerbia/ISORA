@@ -28,8 +28,8 @@ import { AccountForm } from '../views/Login.jsx'
 
 const OPENER = (lang, unit, buddy) => `[ENTREN.AR was just opened for the first time. App language: ${lang}. Weight unit: ${unit}. In this chat you are ${buddy.name}, my ENTREN.AR buddy (a little square blue block creature) that I just met: speak as ${buddy.name}, a warm, playful companion. Greet me and start.]`
 
-function OnboardingAccountSheet({ close, onDone }) {
-  const [mode, setMode] = useState('signup')
+function OnboardingAccountSheet({ close, onDone, initialMode = 'signup' }) {
+  const [mode, setMode] = useState(initialMode)
   return <div>
     <h3>{t('Save your progress')}</h3>
     <p className="muted small">{t('Create an account to keep your plan and workouts across devices.')}</p>
@@ -235,7 +235,8 @@ function OnboardingChat() {
     oweTours(['home', 'workout'])   // Iso shows the way round, once Home and the first workout are up
   }
   const continueAsGuest = () => update(s => { s.onboardingOfferLogin = false; s.onboardingDraft = null })
-  const openAccount = () => useUI.getState().openSheet(close => <OnboardingAccountSheet close={close} onDone={() => update(s => { s.onboardingOfferLogin = false; s.onboardingDraft = null })} />)
+  const openAccount = (initialMode = 'signup') => useUI.getState().openSheet(close => <OnboardingAccountSheet close={close} initialMode={initialMode} onDone={() => update(s => { s.onboardingOfferLogin = false; s.onboardingDraft = null })} />)
+  const openSignIn = () => { setWelcomed(true); openAccount('signin') }
   const skip = () => update(s => { s.onboarded = true; s.onboardingDraft = null; s.onboardingOfferLogin = false })
 
   const restore = async code => {
@@ -254,7 +255,7 @@ function OnboardingChat() {
   }
 
   // first the welcome screens (components/Welcome.jsx), then meet Iso; Iso then runs the chat as itself
-  if (!welcomed) return <Welcome onDone={() => setWelcomed(true)} />
+  if (!welcomed) return <Welcome onDone={() => setWelcomed(true)} onSignIn={openSignIn} />
   if (!picked) return <div className="ob" ref={root} role="dialog" aria-label={t('Welcome to ISORA')}>
     <div className="ob-head">
       <span className="ob-av"><img className="ob-logo" src="/logo.png" alt="" /></span>

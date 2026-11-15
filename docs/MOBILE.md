@@ -245,9 +245,8 @@ into both native projects — re-run it after every web-code change before build
 
 ## App icons & splash screens
 
-`frontend/resources/icon.svg` is the single source: ISORA's mark (a lime speech bubble
-holding an I of three blocks) on the app background. One script renders every icon from it, the PWA
-ones in `public/` and the PNG sources `@capacitor/assets` needs (`resources/icon-only.png`, the
+`frontend/public/logo.png` is the single source for the Entren.ar mark. The icon generator renders
+the PWA icons in `public/` and the PNG sources `@capacitor/assets` needs (`resources/icon-only.png`, the
 adaptive-icon `icon-foreground.png` / `icon-background.png`, `splash.png`, `splash-dark.png`);
 the generator then writes the native Android and iOS icons and splash screens:
 
