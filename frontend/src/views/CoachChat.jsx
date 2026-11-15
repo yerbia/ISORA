@@ -39,6 +39,7 @@ import '../coach.css'
 
 export default function CoachChat() {
   const nav = useNavigate()
+  const params = useMemo(() => new URLSearchParams(typeof window !== 'undefined' && window.location ? window.location.search : ''), [])
   const S = useStore(s => s.S)
   const user = useStore(s => s.user)
   const config = useStore(s => s.config)
@@ -52,6 +53,7 @@ export default function CoachChat() {
   const [busy, setBusy] = useState(false)
   const endRef = useRef(null)
   const prevJob = useRef(null)
+  const resumedIntent = useRef(false)
   const coachMode = coachLocal?.mode
 
   const ok = coachAvailable(config, user, { demo: DEMO && !PERSONAL, mobile: MOBILE, coachMode })
@@ -116,36 +118,55 @@ export default function CoachChat() {
     } catch (e) {
       // A server that refuses the job says so in English, with its class beside it: the class
       // picks the translated line. One with no line here ('shared') keeps the server's words.
-      if (!consentRequired(e)) toast(JOB_ERRORS[e.data?.code] || e.message || t('Could not ask the Coach'))
+      if (!consentRequired(e, { kind: pending?.kind === 'create' || !(S.routines || []).length ? 'refine' : 'review', text: msg })) toast(JOB_ERRORS[e.data?.code] || e.message || t('Could not ask the Coach'))
     }
     setBusy(false)
   }
 
-  const ask = async (fn, line) => {
+  const ask = async (fn, line, kind = 'review') => {
     setBusy(true)
     try {
       await fn()
       update(s => appendChat(s, { role: 'user', kind: 'text', text: line }))
       refresh()
     } catch (e) {
-      if (!consentRequired(e)) toast(JOB_ERRORS[e.data?.code] || e.message || t('Could not ask the Coach'))
+      if (!consentRequired(e, { kind, text: line })) toast(JOB_ERRORS[e.data?.code] || e.message || t('Could not ask the Coach'))
     }
     setBusy(false)
   }
   // The server is the final authority for consent. A stale tab or a failed previous sync can
   // leave the local copy looking ready while the server still refuses the job. In that case the
   // refusal is a navigation event, not a toast the user cannot act on.
-  const consentRequired = e => {
+  const consentRequired = (e, intent) => {
     if (e?.data?.code !== 'consent' && e?.code !== 'consent') return false
+    try { sessionStorage.setItem('coach_pending_intent', JSON.stringify(intent)) } catch { /* best effort */ }
     nav('/coach/intake?consent=1', { replace: true })
     return true
   }
+  useEffect(() => {
+    if (resumedIntent.current || !storeReady || !ready || params.get('resume') !== '1') return
+    let intent = null
+    try {
+      intent = JSON.parse(sessionStorage.getItem('coach_pending_intent') || 'null')
+      sessionStorage.removeItem('coach_pending_intent')
+    } catch { /* no pending instruction */ }
+    if (!intent?.kind) return
+    resumedIntent.current = true
+    const run = intent.kind === 'refine'
+      ? () => refinePlan(intent.text || '')
+      : intent.kind === 'debrief'
+        ? () => requestDebrief(lastWorkout?.id || null)
+        : intent.kind === 'plan'
+          ? () => requestPlan(coach.profile)
+          : () => requestReview(intent.text || '')
+    ask(run, intent.text || t('Have a look at my training and tell me what you would change.'), intent.kind)
+  }, [storeReady, ready, params])
   const askReview = () => ask(() => requestReview(''), t('Have a look at my training and tell me what you would change.'))
   const lastWorkout = (S.workouts || []).filter(w => w && w.d).at(-1) || null
   const askDebrief = () => ask(() => requestDebrief(lastWorkout?.id || null), lastWorkout?.name
     ? t('How did my {0} session go?', lastWorkout.name)
-    : t('How did my last workout go?'))
-  const askNewPlan = () => ask(() => requestPlan(coach.profile), t('Build me a fresh plan from my answers.'))
+    : t('How did my last workout go?'), 'debrief')
+  const askNewPlan = () => ask(() => requestPlan(coach.profile), t('Build me a fresh plan from my answers.'), 'plan')
   const askImprove = r => ask(
     () => requestReview(t('Focus only on my routine “{0}”. Improve it: exercise choice, order, sets and reps, rep ranges, progression. Leave the other routines alone.', r.name)),
     t('Improve my routine “{0}”.', r.name))

@@ -93,7 +93,7 @@ export default function CoachIntake() {
 
   const agree = () => {
     update(s => { s.coach = { ...(s.coach || emptyCoach()), consent: { agreedAt: new Date().toISOString(), version: CONSENT_VERSION } } })
-    if (reconsentOnly) nav('/coach', { replace: true })
+    if (reconsentOnly) nav('/coach' + (forcedConsent ? '?resume=1' : ''), { replace: true })
     else setStep(step + 1)
   }
 
@@ -259,7 +259,7 @@ function Consent({ onAgree, onDecline }) {
   const who = info?.payer === 'you'
     ? t('Sent straight to {0} with your own API key. You pay for every request.', info.host || info.providerLabel)
     : t('Sent to {0}, running on this server under the instance owner’s account.', info?.providerLabel || config?.coach?.providerLabel || t('the configured AI provider'))
-  return <>
+  return <div className="ob-consent-screen">
     <div className="ob-eyebrow">{t('Before we start')}</div>
     <h1 className="ob-h">{t('Meet the Coach')}</h1>
     <p className="ob-p">{t('It designs your plan from a few answers and adjusts it from what you actually log. It never changes anything without your say-so, and you can undo every change.')}</p>
@@ -279,5 +279,5 @@ function Consent({ onAgree, onDecline }) {
       <Button variant="primary" onClick={onAgree}>{t('I understand, let’s go')}</Button>
       <Button onClick={onDecline}>{t('Not now')}</Button>
     </div>
-  </>
+  </div>
 }
