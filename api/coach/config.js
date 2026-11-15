@@ -114,7 +114,10 @@ let keyCache = null;
 function key() {
   if (keyCache) return keyCache;
   // Read the secret lazily: server.js creates it at boot, and this module may be imported first.
-  const secret = fs.readFileSync(path.join(DATA, 'secret'), 'utf8').trim();
+  // Vercel instances do not share DATA_DIR. Prefer the stable server secret so encrypted
+  // provider credentials can be decrypted by every instance; local installs keep the old file.
+  const secret = String(process.env.COACH_ENCRYPTION_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim()
+    || fs.readFileSync(path.join(DATA, 'secret'), 'utf8').trim();
   keyCache = Buffer.from(crypto.hkdfSync('sha256', Buffer.from(secret, 'utf8'), Buffer.alloc(0), Buffer.from('opengym-coach-v1'), 32));
   return keyCache;
 }

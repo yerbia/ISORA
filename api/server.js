@@ -37,6 +37,7 @@ import { atomicWrite as durableWrite } from './durable.js';
 import { excusedOn, nudgeFor, nudgeWindowOpen, toneOf } from './nudge.js';
 import { createClient } from '@supabase/supabase-js';
 import { createCoachPersistence } from './coach/persistence.js';
+import { createAdminPersistence } from './admin/persistence.js';
 
 const PORT = +(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || '/data';
@@ -49,6 +50,7 @@ const SUPABASE_SERVICE_ROLE_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY |
 // The service key is server-only and is used solely for the encrypted, instance-wide Coach
 // configuration. Without it, the API keeps the existing local-file fallback.
 const coachPersistence = createCoachPersistence({ url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY });
+const adminPersistence = createAdminPersistence({ url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY });
 // Admin dashboard (issue): admins are matched by uid (or the admin flag FIRST_USER_ADMIN sets);
 // INVITE_ONLY gates new signups behind a code the admin generates. Off by default, so a fresh
 // self-hosted instance stays open.
@@ -924,6 +926,7 @@ function audit(req, ev, f = {}) {
   if (ip) rec.ip = ip;
   try { fs.appendFileSync(auditFile, JSON.stringify(rec) + '\n'); }
   catch (e) { return console.error('audit write failed', e.message); }
+  void adminPersistence?.appendAudit(rec);
   // Amortized: a 5000-event cap rewrites the file once per ~1250 events.
   if (AUDIT_MAX && ++auditCount > AUDIT_MAX * 1.25) compactAudit();
 }
@@ -2492,6 +2495,12 @@ const routes = {
   // One row per user, cheap enough for a personal instance (reads each state file once).
   'GET /api/admin/users': async (req, res) => {
     if (!(await requireAdmin(req, res))) return;
+    if (adminPersistence) {
+      try {
+        const users = (await adminPersistence.users()).map(u => ({ ...u, admin: u.admin || ADMIN_UIDS.includes(u.id) }));
+        return json(res, 200, { users, invite_only: INVITE_ONLY, ...(PASSWORD_LOGIN ? { password_login: true } : {}), now: Date.now() });
+      } catch (e) { console.error('admin users from Supabase:', e.message); }
+    }
     const users = db.users.map(u => {
       const S = readState(u.id) || {};
       const workouts = records(S.workouts);
@@ -2516,6 +2525,14 @@ const routes = {
   'GET /api/admin/user': async (req, res) => {
     if (!(await requireAdmin(req, res))) return;
     const id = new URL(req.url, 'http://x').searchParams.get('id');
+    if (adminPersistence) {
+      try {
+        const result = await adminPersistence.user(id);
+        if (!result) return json(res, 404, { error: 'no such user' });
+        result.user.admin = result.user.admin || ADMIN_UIDS.includes(result.user.id);
+        return json(res, 200, result);
+      } catch (e) { console.error('admin user from Supabase:', e.message); }
+    }
     const u = db.users.find(x => x.id === id);
     if (!u) return json(res, 404, { error: 'no such user' });
     const S = readState(u.id) || {};
@@ -2539,6 +2556,16 @@ const routes = {
   'POST /api/admin/user/disable': async (req, res) => {
     const admin = await requireAdmin(req, res); if (!admin) return;
     const body = await readBody(req);
+    if (adminPersistence) {
+      try {
+        const target = await adminPersistence.user(body.id);
+        if (!target) return json(res, 404, { error: 'no such user' });
+        if (target.user.admin || ADMIN_UIDS.includes(target.user.id)) return json(res, 400, { error: 'cannot disable an admin' });
+        await adminPersistence.setDisabled(body.id, !!body.disabled);
+        audit(req, body.disabled ? 'admin.user.disable' : 'admin.user.enable', { user: admin, target: target.user });
+        return json(res, 200, { ok: true, id: body.id, disabled: !!body.disabled });
+      } catch (e) { console.error('admin disable in Supabase:', e.message); }
+    }
     const u = db.users.find(x => x.id === body.id);
     if (!u) return json(res, 404, { error: 'no such user' });
     if (isAdmin(u)) return json(res, 400, { error: 'cannot disable an admin' });
@@ -2629,6 +2656,12 @@ const routes = {
     const limit = Math.max(1, Math.min(200, +q.get('limit') || 100));
     const before = +q.get('before') || Infinity;
     const cat = q.get('cat') || '';
+    if (adminPersistence) {
+      try {
+        const events = await adminPersistence.audit({ limit, category: cat, before });
+        return json(res, 200, { events, total: events.length, nextBefore: events.length === limit ? events[events.length - 1].id : null, enabled: AUDIT_ON, ip_mode: AUDIT_IP, retention: { max: AUDIT_MAX, days: AUDIT_DAYS }, now: Date.now() });
+      } catch (e) { console.error('admin audit from Supabase:', e.message); }
+    }
     let rows = auditKeep(auditLines()).reverse();
     if (cat === 'fail') rows = rows.filter(r => !r.ok);
     else if (cat) rows = rows.filter(r => String(r.ev).startsWith(cat + '.'));
@@ -2648,6 +2681,13 @@ const routes = {
   // ./data/audit.log already is the export, in a format jq reads directly.
   'POST /api/admin/audit/clear': async (req, res) => {
     const admin = await requireAdmin(req, res); if (!admin) return;
+    if (adminPersistence) {
+      try {
+        await adminPersistence.clearAudit();
+        audit(req, 'admin.audit.clear', { user: admin });
+        return json(res, 200, { ok: true });
+      } catch (e) { console.error('admin audit clear in Supabase:', e.message); }
+    }
     try { fs.unlinkSync(auditFile); } catch { /* nothing logged yet */ }
     auditCount = 0;
     audit(req, 'admin.audit.clear', { user: admin });
