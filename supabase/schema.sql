@@ -83,6 +83,15 @@ create table if not exists public.invites (
   revoked boolean not null default false
 );
 
+-- Existing projects may have created invites before the durable admin migration. Keep those
+-- rows and bring the table to the current shape instead of relying on CREATE TABLE IF NOT EXISTS.
+alter table public.invites add column if not exists note text not null default '';
+alter table public.invites add column if not exists created_by uuid references auth.users(id) on delete set null;
+alter table public.invites add column if not exists created_at timestamptz not null default now();
+alter table public.invites add column if not exists used_by uuid references auth.users(id) on delete set null;
+alter table public.invites add column if not exists used_at timestamptz;
+alter table public.invites add column if not exists revoked boolean not null default false;
+
 alter table public.invites enable row level security;
 
 alter table public.profiles enable row level security;
@@ -92,6 +101,18 @@ alter table public.push_subscriptions enable row level security;
 grant select, insert, update, delete on table public.profiles to authenticated;
 grant select, insert, update, delete on table public.workout_states to authenticated;
 grant select, insert, update, delete on table public.push_subscriptions to authenticated;
+
+-- The API uses a server-only Supabase secret key. RLS is still enabled above for browser
+-- clients, but the backend role also needs table and sequence privileges on projects where the
+-- default service_role grants were revoked or the tables were restored from a dump.
+grant select, insert, update, delete on table public.profiles to service_role;
+grant select, insert, update, delete on table public.workout_states to service_role;
+grant select, insert, update, delete on table public.push_subscriptions to service_role;
+grant select, insert, update, delete on table public.media_files to service_role;
+grant select, insert, update, delete on table public.coach_config to service_role;
+grant select, insert, update, delete on table public.audit_events to service_role;
+grant select, insert, update, delete on table public.invites to service_role;
+grant usage, select on all sequences in schema public to service_role;
 
 drop policy if exists "profiles own row" on public.profiles;
 create policy "profiles own row" on public.profiles for select using (auth.uid() = id);
