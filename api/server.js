@@ -644,17 +644,16 @@ async function requestUser(req) {
   const auth = await supabaseAuth(req);
   const supabaseUser = auth?.user;
   if (!supabaseUser) return null;
-  // Keep server-side flags (admin/disabled/name) authoritative while accepting the Supabase
-  // identity as proof of authentication. This matters when a Bearer request arrives after the
-  // legacy cookie has expired: an admin must not silently become a normal user.
-  const local = db.users.find(user => user.id === supabaseUser.id);
-  if (local) return local;
-  // A cold/ephemeral instance may not have rebuilt its legacy mirror yet. Read the
-  // server-managed profile so a persisted admin flag remains authoritative.
+  // Supabase is authoritative for web sessions. Do not prefer db.json here: on Vercel it is only
+  // a best-effort mirror and may be stale after another function instance changed a profile.
   try {
     const { data: profile } = await auth.client.from('profiles').select('id,name,admin,disabled').eq('id', supabaseUser.id).maybeSingle();
     if (profile) return { ...supabaseUser, ...profile };
   } catch { /* the auth identity is still valid; fall back to its public fields */ }
+  // A cold/ephemeral instance may not have a profile mirror yet. Keep the local fallback for
+  // backwards compatibility, but never use it in preference to a durable profile.
+  const local = db.users.find(user => user.id === supabaseUser.id);
+  if (local) return local;
   return supabaseUser;
 }
 // Guard for /api/admin/* — resolves the caller and 401/403s if they aren't an admin.
@@ -2033,6 +2032,26 @@ const routes = {
       user.avatar = avatarUrl;
       try { saveDb(); } catch (e) { console.error('supabase avatar mirror not persisted:', e.message); }
     }
+    // A disable performed by another Vercel instance is durable in Supabase, while db.json is
+    // only a local mirror. Check the authoritative profile before issuing a new API cookie.
+    try {
+      const { data: profile } = await auth.client.from('profiles').select('disabled').eq('id', su.id).maybeSingle();
+      if (profile?.disabled) return json(res, 403, { error: 'account disabled' });
+    } catch (e) { console.error('supabase profile status check failed:', e.message); }
+    // The trigger in supabase/schema.sql normally creates this row, but an existing project may
+    // have been created before that trigger was installed. Ensure the admin dashboard and state
+    // routes can see the account even on that project. The service key never reaches the browser.
+    if (adminPersistence) {
+      try {
+        await adminPersistence.ensureProfile({
+          id: user.id,
+          name: user.name,
+          admin: isAdmin(user),
+          disabled: !!user.disabled,
+          createdAt: user.created
+        });
+      } catch (e) { console.error('supabase profile bootstrap failed:', e.message); }
+    }
     if (user.disabled) return json(res, 403, { error: 'account disabled' });
     res.setHeader('Set-Cookie', sessionCookie(user));
     json(res, 200, { user: { id: user.id, name: user.name, avatar: user.avatar || null, admin: isAdmin(user) } });
@@ -2615,6 +2634,17 @@ const routes = {
   'POST /api/admin/user/delete': async (req, res) => {
     const admin = await requireAdmin(req, res); if (!admin) return;
     const body = await readBody(req);
+    if (adminPersistence) {
+      try {
+        const target = await adminPersistence.user(body.id);
+        if (!target) return json(res, 404, { error: 'no such user' });
+        if (body.id === admin.id) return json(res, 400, { error: 'you cannot delete your own account' });
+        if (target.user.admin || ADMIN_UIDS.includes(target.user.id)) return json(res, 400, { error: 'cannot delete an admin' });
+        await adminPersistence.deleteUser(body.id);
+        audit(req, 'admin.user.delete', { user: admin, msg: target.user.name });
+        return json(res, 200, { ok: true, id: body.id });
+      } catch (e) { console.error('admin delete in Supabase:', e.message); }
+    }
     const u = db.users.find(x => x.id === body.id);
     if (!u) return json(res, 404, { error: 'no such user' });
     if (u.id === admin.id) return json(res, 400, { error: 'you cannot delete your own account' });

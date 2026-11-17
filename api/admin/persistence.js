@@ -28,6 +28,21 @@ export function createAdminPersistence({ url, serviceRoleKey, log = console } = 
   const warn = error => log.warn?.('Supabase admin persistence unavailable:', error?.message || error);
 
   return {
+    async ensureProfile({ id, name = '', admin = false, disabled = false, createdAt = null } = {}) {
+      const values = {
+        id,
+        name: String(name || '').slice(0, 40),
+        admin: !!admin,
+        disabled: !!disabled,
+        ...(createdAt ? { created_at: createdAt } : {})
+      };
+      const { error } = await client.from('profiles').upsert(values, { onConflict: 'id', ignoreDuplicates: true });
+      if (error) throw error;
+      if (admin) {
+        const { error: adminError } = await client.from('profiles').update({ admin: true }).eq('id', id);
+        if (adminError) throw adminError;
+      }
+    },
     async invites() {
       const { data, error } = await client.from('invites').select('code,note,created_by,created_at,used_by,used_at,revoked').order('created_at', { ascending: true });
       if (error) throw error;
@@ -78,6 +93,10 @@ export function createAdminPersistence({ url, serviceRoleKey, log = console } = 
     },
     async setDisabled(id, disabled) {
       const { error } = await client.from('profiles').update({ disabled: !!disabled }).eq('id', id);
+      if (error) throw error;
+    },
+    async deleteUser(id) {
+      const { error } = await client.auth.admin.deleteUser(id);
       if (error) throw error;
     },
     async appendAudit(event) {
