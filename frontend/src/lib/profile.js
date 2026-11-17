@@ -14,7 +14,7 @@ export function cleanProfile(p) {
   const o = p && typeof p === 'object' ? p : {}
   const name = typeof o.name === 'string' ? o.name.trim().slice(0, 40) : ''
   const avatar = typeof o.avatar === 'string' && AVATARS.includes(o.avatar) ? o.avatar : ''
-  const photo = typeof o.photo === 'string' && /^https:\/\//i.test(o.photo) ? o.photo : ''
+  const photo = typeof o.photo === 'string' && (/^https:\/\//i.test(o.photo) || o.photo === '/api/profile/avatar') ? o.photo : ''
   const goal = GOALS.includes(o.goal) ? o.goal : null
   const wt = Number(o.weekTarget)
   const weekTarget = Number.isInteger(wt) && wt >= 1 && wt <= 7 ? wt : 0

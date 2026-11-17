@@ -9,10 +9,40 @@ export function createMediaPersistence({ url, serviceRoleKey, log = console } = 
   if (!url || !serviceRoleKey) return null;
   const client = createClient(url, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const pathOf = (uid, hash, ext) => `${uid}/${hash}.${ext}`;
+  const avatarPath = uid => `avatars/${uid}.webp`;
   const warn = error => log.error?.('Supabase media persistence unavailable:', error?.message || error);
 
   return {
     enabled: true,
+    async putAvatar(uid, { bytes, mime, size }) {
+      const storagePath = avatarPath(uid);
+      const { error: uploadError } = await client.storage.from(BUCKET).upload(storagePath, bytes, {
+        contentType: mime,
+        upsert: true,
+        cacheControl: '31536000'
+      });
+      if (uploadError) throw uploadError;
+      const { error } = await client.from('profiles').update({ avatar_path: storagePath, avatar_mime: mime, avatar_size: size }).eq('id', uid);
+      if (error) throw error;
+      return storagePath;
+    },
+    async avatar(uid) {
+      const { data: profile, error } = await client.from('profiles').select('avatar_path,avatar_mime,avatar_size').eq('id', uid).maybeSingle();
+      if (error) throw error;
+      if (!profile?.avatar_path) return null;
+      const { data, error: downloadError } = await client.storage.from(BUCKET).download(profile.avatar_path);
+      if (downloadError) throw downloadError;
+      return { mime: profile.avatar_mime || 'image/webp', size: profile.avatar_size || data.size, bytes: Buffer.from(await data.arrayBuffer()) };
+    },
+    async removeAvatar(uid) {
+      const { data: profile } = await client.from('profiles').select('avatar_path').eq('id', uid).maybeSingle();
+      if (profile?.avatar_path) {
+        const { error } = await client.storage.from(BUCKET).remove([profile.avatar_path]);
+        if (error) warn(error);
+      }
+      const { error } = await client.from('profiles').update({ avatar_path: null, avatar_mime: null, avatar_size: null }).eq('id', uid);
+      if (error) throw error;
+    },
     async put(uid, file) {
       const bytes = await fs.readFile(file.path);
       const storagePath = pathOf(uid, file.hash, file.ext);

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { t, dateLocale } from '../lib/i18n.js'
@@ -6,6 +6,8 @@ import { fmtNum, exerciseNameText } from '../lib/format.js'
 import { exOr } from '../lib/exercises.js'
 import { bestSetFor } from '../lib/exercise-history.js'
 import { cleanProfile, initialOf, GOALS, GOAL_NAME, AVATARS, personalRecords } from '../lib/profile.js'
+import { api, apiUpload } from '../lib/api.js'
+import { limitsFrom, MB } from '../lib/media-limits.js'
 import { Button, TextField } from './ui.jsx'
 import Icon from './Icon.jsx'
 
@@ -28,9 +30,42 @@ export function Avatar({ profile, size = 40, onClick, label }) {
 function ProfileSheet({ close }) {
   const S = useStore(s => s.S)
   const update = useStore(s => s.update)
+  const user = useStore(s => s.user)
+  const config = useStore(s => s.config)
   const p = cleanProfile(S.profile)
   const [name, setName] = useState(p.name)
+  const [avatarBusy, setAvatarBusy] = useState(false)
+  const fileRef = useRef(null)
+  const toast = useUI(s => s.toast)
   const save = patch => update(s => { s.profile = cleanProfile({ ...cleanProfile(s.profile), ...patch }) })
+  const removeUploadedAvatar = async () => {
+    if (p.photo === '/api/profile/avatar') {
+      try { await api('/api/profile/avatar', { method: 'DELETE', body: '{}' }) } catch { /* retry on next upload */ }
+    }
+  }
+  const uploadAvatar = async ev => {
+    const file = ev.target.files?.[0]
+    ev.target.value = ''
+    if (!file) return
+    setAvatarBusy(true)
+    try {
+      const { ingestMediaFile } = await import('../lib/media-ingest.js')
+      const out = await ingestMediaFile(file, { ...limitsFrom(config), imageMB: 1 })
+      const main = out.blobs.find(b => b.hash === out.media.hash)
+      if (!main || main.blob.size > MB) throw Object.assign(new Error('avatar-too-large'), { code: 'avatar-too-large' })
+      const result = await apiUpload('/api/profile/avatar', main.blob, main.mime)
+      save({ avatar: '', photo: result.url || '/api/profile/avatar' })
+      toast(t('Profile photo saved'))
+    } catch (e) {
+      toast(e?.code === 'avatar-too-large' || e?.code === 'too-large'
+        ? t('That avatar is too large. Max 1 MB.')
+        : t('Couldn’t save that profile photo.'))
+    } finally { setAvatarBusy(false) }
+  }
+  const choosePreset = async avatar => { await removeUploadedAvatar(); save({ avatar, photo: '' }) }
+  const chooseInitial = async () => { await removeUploadedAvatar(); save({ avatar: '', photo: '' }) }
+  const googlePhoto = /^https:\/\//i.test(user?.avatar || '') ? user.avatar : ''
+  const chooseGoogle = async () => { await removeUploadedAvatar(); save({ avatar: '', photo: googlePhoto }) }
   const done = () => { save({ name }); close() }
   return <div className="profile-sheet">
     <div className="row between" style={{ marginBottom: 6 }}>
@@ -48,13 +83,21 @@ function ProfileSheet({ close }) {
 
     <h2 className="sect-t pf-h">{t('Avatar')}</h2>
     <div className="pf-grid">
-      <button type="button" className={'pf-opt' + (!p.avatar ? ' on' : '')} onClick={() => save({ avatar: '', photo: '' })} aria-label={t('Your initial')}>
+      <button type="button" className={'pf-opt' + (!p.avatar && !p.photo ? ' on' : '')} onClick={chooseInitial} aria-label={t('Your initial')}>
         <Avatar profile={{ name }} size={44} />
       </button>
-      {AVATARS.map(a => <button type="button" key={a} className={'pf-opt' + (p.avatar === a ? ' on' : '')} onClick={() => save({ avatar: a })}>
+      {AVATARS.map(a => <button type="button" key={a} className={'pf-opt' + (p.avatar === a ? ' on' : '')} onClick={() => choosePreset(a)}>
         <span className="avatar pic" style={{ '--sz': '44px' }}>{a}</span>
       </button>)}
+      <button type="button" className={'pf-opt' + (p.photo === '/api/profile/avatar' ? ' on' : '')} onClick={() => fileRef.current?.click()} disabled={avatarBusy} aria-label={t('Upload a profile photo')}>
+        <span className="avatar pic" style={{ '--sz': '44px' }}>{avatarBusy ? '…' : '📷'}</span>
+      </button>
+      {googlePhoto && <button type="button" className={'pf-opt' + (p.photo === googlePhoto ? ' on' : '')} onClick={chooseGoogle} aria-label={t('Use your Google photo')}>
+        <img className="avatar" style={{ '--sz': '44px' }} src={googlePhoto} alt="" />
+      </button>}
     </div>
+    <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={uploadAvatar} />
+    <p className="sect-f">{t('Profile photos are resized and limited to 1 MB.')}</p>
 
     <h2 className="sect-t pf-h">{t('What you train for')}</h2>
     <div className="pf-chips">

@@ -92,6 +92,8 @@ const MESSAGES = {
   'media-type': 'that file type is not accepted',
   'media-too-large': 'that file is too large',
   'media-persistence': 'the file could not be saved permanently',
+  'avatar-too-large': 'that avatar is too large',
+  'avatar-type': 'that avatar format is not supported',
   'media-quota': 'your space for photos and videos is full',
   'media-invalid': 'that video could not be read',
   'media-too-long': 'that video is too long',

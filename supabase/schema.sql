@@ -4,8 +4,15 @@ create table if not exists public.profiles (
   name text not null default '',
   admin boolean not null default false,
   disabled boolean not null default false,
+  avatar_path text,
+  avatar_mime text,
+  avatar_size bigint check (avatar_size is null or (avatar_size > 0 and avatar_size <= 1048576)),
   created_at timestamptz not null default now()
 );
+
+alter table public.profiles add column if not exists avatar_path text;
+alter table public.profiles add column if not exists avatar_mime text;
+alter table public.profiles add column if not exists avatar_size bigint;
 
 create table if not exists public.workout_states (
   user_id uuid primary key references auth.users(id) on delete cascade,

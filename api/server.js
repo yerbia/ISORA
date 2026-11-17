@@ -817,6 +817,23 @@ function readBody(req) {
     req.on('error', e => reject(Object.assign(e, { clientGone: true })));
   });
 }
+
+function readRawBody(req, maxBytes) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    let done = false;
+    const fail = error => { if (!done) { done = true; reject(error); } };
+    req.on('data', chunk => {
+      if (done) return;
+      size += chunk.length;
+      if (size > maxBytes) return fail(new MediaError(413, 'avatar-too-large', { maxMB: maxBytes / 1048576 }));
+      chunks.push(chunk);
+    });
+    req.on('end', () => { if (!done) { done = true; resolve(Buffer.concat(chunks)); } });
+    req.on('error', fail);
+  });
+}
 // A caller-supplied field that is meant to be text. String() alone is not safe on a parsed body:
 // `{"code":{"toString":1}}` is valid JSON and String() throws on it.
 const text = v => (typeof v === 'string' ? v : typeof v === 'number' ? String(v) : '');
@@ -1889,6 +1906,35 @@ function sendMediaBuffer(res, f, hash) {
   res.end(f.bytes);
 }
 
+const profileAvatarRoutes = {
+  'PUT /api/profile/avatar': async (req, res) => {
+    const user = await requestUser(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
+    if (!mediaPersistence) return json(res, 503, { error: 'avatar persistence is not configured', code: 'media-persistence' });
+    const mime = String(req.headers['content-type'] || '').split(';')[0].toLowerCase();
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(mime)) throw new MediaError(415, 'avatar-type');
+    req.allowSlowBody?.();
+    const bytes = await readRawBody(req, 1024 * 1024);
+    if (!bytes.length) throw new MediaError(400, 'avatar-type');
+    await mediaPersistence.putAvatar(user.id, { bytes, mime, size: bytes.length });
+    json(res, 200, { ok: true, url: '/api/profile/avatar', size: bytes.length });
+  },
+  'GET /api/profile/avatar': async (req, res) => {
+    const user = await requestUser(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
+    if (!mediaPersistence) throw new MediaError(404, 'media-missing');
+    const avatar = await mediaPersistence.avatar(user.id);
+    if (!avatar) throw new MediaError(404, 'media-missing');
+    sendMediaBuffer(res, { ...avatar, ext: avatar.mime === 'image/png' ? 'png' : avatar.mime === 'image/jpeg' ? 'jpg' : 'webp' }, 'avatar');
+  },
+  'DELETE /api/profile/avatar': async (req, res) => {
+    const user = await requestUser(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
+    if (mediaPersistence) await mediaPersistence.removeAvatar(user.id);
+    json(res, 200, { ok: true });
+  }
+};
+
 const mediaRoutes = {
   // The raw bytes of one file, named by the sha256 the client computed. media.js checks the
   // hash, the magic bytes, the caps, the quota and the free disk; this route only adds the
@@ -2815,7 +2861,8 @@ const routes = {
   /* ---------- photos & videos ---------- */
   // Absent, not refusing, when MEDIA_UPLOADS=0: a 404 is what a server from before the feature
   // answers, and the client already treats that as "this server does not store them".
-  ...(MEDIA_ON ? mediaRoutes : {})
+  ...(MEDIA_ON ? mediaRoutes : {}),
+  ...profileAvatarRoutes
 };
 
 /* ---------- Coach: boot recovery, notifications, scheduled reviews ---------- */
