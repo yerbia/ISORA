@@ -4,7 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 const records = value => Array.isArray(value) ? value.filter(v => v && typeof v === 'object' && !Array.isArray(v)) : [];
 const stateFor = row => row?.state && typeof row.state === 'object' && !Array.isArray(row.state) ? row.state : {};
 
-const summary = (profile, state) => {
+const summary = (profile, row, hasPush = false) => {
+  const state = stateFor(row);
   const workouts = records(state.workouts);
   const last = workouts[workouts.length - 1];
   return {
@@ -16,8 +17,10 @@ const summary = (profile, state) => {
     invitedBy: null,
     workouts: workouts.length,
     lastWorkout: last?.d || null,
-    lastSync: state._ts || (state.updated_at ? Date.parse(state.updated_at) : null) || null,
-    hasPush: false,
+    // `_ts` belongs to the client document. `updated_at` belongs to the durable row and is
+    // the authoritative fallback for old clients/documents that did not stamp `_ts`.
+    lastSync: state._ts || (row?.updated_at ? Date.parse(row.updated_at) : null) || null,
+    hasPush,
     live: false
   };
 };
@@ -62,14 +65,19 @@ export function createAdminPersistence({ url, serviceRoleKey, log = console } = 
       return !!data;
     },
     async users() {
-      const [{ data: profiles, error: pe }, { data: states, error: se }] = await Promise.all([
+      const [{ data: profiles, error: pe }, { data: states, error: se }, { data: pushes, error: pushError }] = await Promise.all([
         client.from('profiles').select('id,name,admin,disabled,created_at').order('created_at', { ascending: true }),
-        client.from('workout_states').select('user_id,state,updated_at')
+        client.from('workout_states').select('user_id,state,updated_at'),
+        client.from('push_subscriptions').select('user_id')
       ]);
       if (pe) throw pe;
       if (se) throw se;
+      // Push subscriptions are an optional decoration of the user row. A project upgraded
+      // before that table existed must still be able to open the persistent admin dashboard.
+      if (pushError) log.warn?.('Supabase push subscriptions unavailable:', pushError.message || pushError);
       const byId = new Map((states || []).map(row => [row.user_id, row]));
-      return (profiles || []).map(profile => summary(profile, stateFor(byId.get(profile.id))));
+      const pushIds = new Set((pushes || []).map(row => row.user_id));
+      return (profiles || []).map(profile => summary(profile, byId.get(profile.id), pushIds.has(profile.id)));
     },
     async user(id) {
       const [{ data: profile, error: pe }, { data: stateRow, error: se }] = await Promise.all([

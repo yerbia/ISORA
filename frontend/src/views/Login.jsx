@@ -7,7 +7,6 @@ import { t } from '../lib/i18n.js'
 import { DEMO, PERSONAL, REPO } from '../lib/demo.js'
 import { guestAllowed } from '../lib/guest.js'
 import Icon from '../components/Icon.jsx'
-import IsoraMark from '../components/IsoraMark.jsx'
 import { Button } from '../components/ui.jsx'
 
 function GoogleMark() {
@@ -110,7 +109,7 @@ export default function Login() {
     const { data: sub } = supabase.auth.onAuthStateChange(event => { if (event === 'PASSWORD_RECOVERY') setRecovery(true) })
     return () => sub.subscription.unsubscribe()
   }, [])
-  const head = <><IsoraMark className="isora-mark login-mark" size={84} /><h1 style={{ fontSize: 34, fontWeight: 700, letterSpacing: '-.028em', margin: '10px 0 4px' }}>Entren.ar</h1></>
+  const head = <><img className="login-logo" src="/logo.png" alt="Entren.ar" /><h1 style={{ fontSize: 34, fontWeight: 700, letterSpacing: '-.028em', margin: '10px 0 4px' }}>Entren.ar</h1></>
   const wrap = { display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '78vh', textAlign: 'center' }
   if (PERSONAL) return <div className="narrow" style={wrap}>{head}<div className="muted" style={{ marginBottom: 30 }}>{t('Everything stays on this device.')}</div><Button variant="primary" icon="play" onClick={() => setGuest(true)}>{t('Start')}</Button></div>
   if (DEMO) return <div className="narrow" style={wrap}>{head}<div className="muted" style={{ marginBottom: 30 }}>{t('Live demo. Everything stays in this browser.')}</div><Button variant="primary" icon="play" onClick={() => setGuest(true)}>{t('Start the demo')}</Button><div className="dim small" style={{ marginTop: 22 }}><a href={REPO} target="_blank" rel="noopener">{t('Self-host it in a minute →')}</a></div></div>

@@ -53,6 +53,13 @@ const SUPABASE_SERVICE_ROLE_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY |
 const coachPersistence = createCoachPersistence({ url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY });
 const adminPersistence = createAdminPersistence({ url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY });
 const mediaPersistence = createMediaPersistence({ url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY });
+// Once a deployment opts into Supabase, a remote read/write failure must not silently fall back
+// to the ephemeral filesystem. That fallback makes the dashboard look healthy while its next
+// cold start loses users, invites, Coach settings, or audit history.
+const adminPersistenceFailure = (res, error, operation) => {
+  console.error(`admin durable storage (${operation}) unavailable:`, error?.message || error);
+  return json(res, 503, { error: 'durable admin storage is unavailable', code: 'persistence-unavailable' });
+};
 // Admin dashboard (issue): admins are matched by uid (or the admin flag FIRST_USER_ADMIN sets);
 // INVITE_ONLY gates new signups behind a code the admin generates. Off by default, so a fresh
 // self-hosted instance stays open.
@@ -2619,9 +2626,15 @@ const routes = {
     if (!(await requireAdmin(req, res))) return;
     if (adminPersistence) {
       try {
-        const users = (await adminPersistence.users()).map(u => ({ ...u, admin: u.admin || ADMIN_UIDS.includes(u.id) }));
+        const users = (await adminPersistence.users()).map(u => ({
+          ...u,
+          admin: u.admin || ADMIN_UIDS.includes(u.id),
+          // Presence is intentionally ephemeral, but it must still be joined onto the durable
+          // user row so Supabase-backed deployments do not permanently show "training now: 0".
+          live: livePresence(u.id)
+        }));
         return json(res, 200, { users, invite_only: INVITE_ONLY, ...(PASSWORD_LOGIN ? { password_login: true } : {}), now: Date.now() });
-      } catch (e) { console.error('admin users from Supabase:', e.message); }
+      } catch (e) { return adminPersistenceFailure(res, e, 'users'); }
     }
     const users = db.users.map(u => {
       const S = readState(u.id) || {};
@@ -2653,7 +2666,7 @@ const routes = {
         if (!result) return json(res, 404, { error: 'no such user' });
         result.user.admin = result.user.admin || ADMIN_UIDS.includes(result.user.id);
         return json(res, 200, result);
-      } catch (e) { console.error('admin user from Supabase:', e.message); }
+      } catch (e) { return adminPersistenceFailure(res, e, 'user'); }
     }
     const u = db.users.find(x => x.id === id);
     if (!u) return json(res, 404, { error: 'no such user' });
@@ -2686,7 +2699,7 @@ const routes = {
         await adminPersistence.setDisabled(body.id, !!body.disabled);
         audit(req, body.disabled ? 'admin.user.disable' : 'admin.user.enable', { user: admin, target: target.user });
         return json(res, 200, { ok: true, id: body.id, disabled: !!body.disabled });
-      } catch (e) { console.error('admin disable in Supabase:', e.message); }
+      } catch (e) { return adminPersistenceFailure(res, e, 'disable'); }
     }
     const u = db.users.find(x => x.id === body.id);
     if (!u) return json(res, 404, { error: 'no such user' });
@@ -2718,7 +2731,7 @@ const routes = {
         await adminPersistence.deleteUser(body.id);
         audit(req, 'admin.user.delete', { user: admin, msg: target.user.name });
         return json(res, 200, { ok: true, id: body.id });
-      } catch (e) { console.error('admin delete in Supabase:', e.message); }
+      } catch (e) { return adminPersistenceFailure(res, e, 'delete'); }
     }
     const u = db.users.find(x => x.id === body.id);
     if (!u) return json(res, 404, { error: 'no such user' });
@@ -2748,7 +2761,7 @@ const routes = {
         const rows = await adminPersistence.invites();
         const names = new Map((await adminPersistence.users()).map(u => [u.id, u.name]));
         return json(res, 200, { invites: rows.map(i => ({ ...i, usedByName: i.usedBy ? names.get(i.usedBy) || null : null })), invite_only: INVITE_ONLY });
-      } catch (e) { console.error('admin invites from Supabase:', e.message); }
+      } catch (e) { return adminPersistenceFailure(res, e, 'invites'); }
     }
     // resolve usedBy uid → name for display
     const invites = db.invites.map(i => ({
@@ -2772,7 +2785,7 @@ const routes = {
         await adminPersistence.createInvite(invite);
         audit(req, 'admin.invite.create', { user: admin, msg: code });
         return json(res, 200, { invite });
-      } catch (e) { console.error('admin invite create in Supabase:', e.message); }
+      } catch (e) { return adminPersistenceFailure(res, e, 'invite-create'); }
     }
     db.invites.push(invite);
     saveDb();
@@ -2792,7 +2805,7 @@ const routes = {
         await adminPersistence.revokeInvite(remote.code);
         audit(req, 'admin.invite.revoke', { user: admin, msg: remote.code });
         return json(res, 200, { ok: true });
-      } catch (e) { console.error('admin invite revoke in Supabase:', e.message); }
+      } catch (e) { return adminPersistenceFailure(res, e, 'invite-revoke'); }
     }
     const inv = db.invites.find(i => i.code === text(body.code).toUpperCase());
     if (!inv) return json(res, 404, { error: 'no such code' });
@@ -2818,7 +2831,7 @@ const routes = {
       try {
         const events = await adminPersistence.audit({ limit, category: cat, before });
         return json(res, 200, { events, total: events.length, nextBefore: events.length === limit ? events[events.length - 1].id : null, enabled: AUDIT_ON, ip_mode: AUDIT_IP, retention: { max: AUDIT_MAX, days: AUDIT_DAYS }, now: Date.now() });
-      } catch (e) { console.error('admin audit from Supabase:', e.message); }
+      } catch (e) { return adminPersistenceFailure(res, e, 'audit'); }
     }
     let rows = auditKeep(auditLines()).reverse();
     if (cat === 'fail') rows = rows.filter(r => !r.ok);
@@ -2844,7 +2857,7 @@ const routes = {
         await adminPersistence.clearAudit();
         audit(req, 'admin.audit.clear', { user: admin });
         return json(res, 200, { ok: true });
-      } catch (e) { console.error('admin audit clear in Supabase:', e.message); }
+      } catch (e) { return adminPersistenceFailure(res, e, 'audit-clear'); }
     }
     try { fs.unlinkSync(auditFile); } catch { /* nothing logged yet */ }
     auditCount = 0;

@@ -99,7 +99,9 @@ test('a profile credential lives in its own file, not in synced state', () => {
   assert.match(file, /coach-auth-alice\.json$/);
   assert.ok(!file.includes('state-'), 'must not ride along in the state blob the client syncs');
 
-  assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+  // Windows does not expose POSIX file modes; the production call still supplies 0600 on
+  // platforms that enforce them.
+  if (process.platform !== 'win32') assert.equal(fs.statSync(file).mode & 0o777, 0o600);
 });
 
 test('a profile id cannot escape the data directory', () => {

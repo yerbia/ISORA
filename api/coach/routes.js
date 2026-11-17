@@ -270,7 +270,11 @@ export function coachRoutes({ json, readBody, readSession, requestUser, requireA
         );
       }
       cfgStore.save(patch);
-      await savePersisted();
+      // A successful in-memory update is not enough on a serverless instance. Do not answer
+      // 200 when the durable write failed: otherwise the next request reloads the old config.
+      if (coachPersistence && (await savePersisted()) === false) {
+        return json(res, 503, { error: 'Coach configuration could not be persisted', code: 'persistence-unavailable' });
+      }
       json(res, 200, { ok: true });
     },
 
@@ -323,7 +327,9 @@ export function coachRoutes({ json, readBody, readSession, requestUser, requireA
       cfgStore.saveAuth(provider, {
         type, account: String(body.account || '').slice(0, 120), data: cfgStore.encrypt({ token }), connectedAt: new Date().toISOString()
       });
-      await savePersisted();
+      if (coachPersistence && (await savePersisted()) === false) {
+        return json(res, 503, { error: 'Coach credential could not be persisted', code: 'persistence-unavailable' });
+      }
       json(res, 200, { ok: true });
     },
 
@@ -334,7 +340,9 @@ export function coachRoutes({ json, readBody, readSession, requestUser, requireA
       const provider = body.provider !== undefined ? String(body.provider) : cfgStore.load().provider;
       if (!cfgStore.PROVIDERS[provider]) return json(res, 400, { error: 'unknown provider' });
       cfgStore.saveAuth(provider, null);
-      await savePersisted();
+      if (coachPersistence && (await savePersisted()) === false) {
+        return json(res, 503, { error: 'Coach credential could not be persisted', code: 'persistence-unavailable' });
+      }
       json(res, 200, { ok: true });
     },
 

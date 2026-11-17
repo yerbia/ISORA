@@ -398,12 +398,14 @@ test('folders are 0700 and files 0600, and an admin deleting the profile removes
   const a = M.jpeg();
   await h.put(a);
   await h.put(M.jpeg(), { uid: U2 });
-  const mode = p => fs.statSync(p).mode & 0o777;
-  assert.equal(mode(h.uploads), 0o700);
-  assert.equal(mode(path.join(h.uploads, U1)), 0o700);
-  assert.equal(mode(path.join(h.uploads, U1, '.tmp')), 0o700);
-  assert.equal(mode(path.join(h.uploads, U1, `${M.sha(a)}.jpg`)), 0o600);
-  assert.equal(mode(path.join(h.uploads, U1, '.gc.json')), 0o600);
+  if (process.platform !== 'win32') {
+    const mode = p => fs.statSync(p).mode & 0o777;
+    assert.equal(mode(h.uploads), 0o700);
+    assert.equal(mode(path.join(h.uploads, U1)), 0o700);
+    assert.equal(mode(path.join(h.uploads, U1, '.tmp')), 0o700);
+    assert.equal(mode(path.join(h.uploads, U1, `${M.sha(a)}.jpg`)), 0o600);
+    assert.equal(mode(path.join(h.uploads, U1, '.gc.json')), 0o600);
+  }
 
   const del = await fetch(`${h.api}/api/admin/user/delete`, { method: 'POST', headers: { ...cookie(ADMIN), 'Content-Type': 'application/json' }, body: JSON.stringify({ id: U1 }) });
   assert.equal(del.status, 200);
@@ -414,7 +416,7 @@ test('folders are 0700 and files 0600, and an admin deleting the profile removes
 test('/api/config carries the caps; MEDIA_UPLOADS=0 takes the block and every route away', async t => {
   const on = await start(t, { MEDIA_QUOTA_MB: '100', MEDIA_VIDEO_MAX_SEC: '30' });
   const cfg = await (await fetch(`${on.api}/api/config`)).json();
-  assert.deepEqual(cfg.media, { imageMB: 2, gifMB: 8, videoMB: 40, videoSec: 30, quotaMB: 100, workouts: true });   // `workouts`: a logged workout may carry them too
+  assert.deepEqual(cfg.media, { imageMB: 2, logicalMB: 2, gifMB: 8, videoMB: 40, videoSec: 30, quotaMB: 100, workouts: true });   // `workouts`: a logged workout may carry them too
 
   const off = await start(t, { MEDIA_UPLOADS: '0' });
   const cfgOff = await (await fetch(`${off.api}/api/config`)).json();

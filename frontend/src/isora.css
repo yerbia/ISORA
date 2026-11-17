@@ -159,7 +159,7 @@ h4.sec,.card h2,.sect-t,.inbox-h{font-size:13px;font-weight:600;letter-spacing:0
 .tag.pr,.pr-badge,.item .pr{color:var(--record)}
 
 @media (prefers-reduced-motion:reduce){ #rest-game,#timer{animation:none} }
-.login-mark{display:block;margin:0 auto}
+.login-logo{display:block;width:84px;height:84px;margin:0 auto;object-fit:cover;border-radius:22px;box-shadow:0 12px 24px color-mix(in srgb,var(--acc) 28%,transparent)}
 
 /* ------------------------------------------------------- grouped lists -- */
 /* Every list of rows in the app (Plan's week, History, Stats' recent workouts, the library, the

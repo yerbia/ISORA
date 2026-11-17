@@ -77,7 +77,9 @@ test('every error code the e-mail and password signup routes return is in their 
   };
   const emailCodes = Object.fromEntries([...server.matchAll(/^\s{2}(\w+): \{ error: '[^']*', code: '([^']+)' \}/gm)].map(m => [m[1], m[2]]));
   const operation = (p, method) => {
-    const from = spec.indexOf(`\n  ${p}:\n`);
+    // The committed YAML may use either LF or CRLF; locate the path independently of its
+    // line-ending style so documentation checks behave the same on Windows and CI.
+    const from = spec.indexOf(`\n  ${p}:`);
     assert.ok(from >= 0, p);
     const rest = spec.slice(from + 1);
     const block = rest.slice(0, rest.slice(1).search(/\n {2}\/|\n[a-zA-Z]/) + 1);

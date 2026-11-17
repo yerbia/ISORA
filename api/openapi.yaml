@@ -153,6 +153,8 @@ tags:
       attached to a logged workout. Stored per profile (one quota for both) and named
       by the SHA-256 of its bytes; the state only carries a `MediaRef`. Every route here is a
       404 when the instance runs with `MEDIA_UPLOADS=0`.
+  - name: profile
+    description: Persisted profile avatar storage
   - name: coach
     description: >-
       AI Coach: plans, reviews and debriefs. Every route here answers 503 unless the
@@ -163,6 +165,22 @@ security:
   - bearerAuth: []
 
 paths:
+  /api/auth/supabase:
+    post:
+      tags: [auth]
+      operationId: exchangeSupabaseSession
+      summary: Exchange a Supabase Auth session for an ISORA session
+      description: Validates the Supabase Bearer token and establishes the server session cookie.
+      security: []
+      requestBody:
+        required: false
+        content:
+          application/json: { schema: { type: object } }
+      responses:
+        '200': { description: Session established. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { description: The profile is disabled. }
+
   /api/health:
     get:
       tags: [meta]
@@ -750,13 +768,14 @@ paths:
                   user: { $ref: '#/components/schemas/SessionUser' }
         '400':
           description: >-
-            The password breaks the policy with `too-short` (under 10 characters), `too-long`
+            The request is `missing`, or the password breaks the policy with `too-short` (under 10 characters), `too-long`
             (over 256) or `too-common`; a field is `missing`; or `email-invalid`: the
             `email` given is not an e-mail address.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
               examples:
+                missing: { value: { error: "name required", code: "missing" } }
                 policy: { value: { error: "this password is too easy to guess", code: "too-common" } }
                 email: { value: { error: "that is not an e-mail address", code: "email-invalid" } }
         '403':
