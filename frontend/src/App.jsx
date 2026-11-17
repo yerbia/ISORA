@@ -101,6 +101,7 @@ function Shell() {
   // native side as an alarm (#375). buzzAsAlarm answers false off Android, so iOS buzzes as before.
   useEffect(() => { setAlarmBuzzer(MOBILE && S.vibrate !== false && S.vibrateOnSilent ? buzzAsAlarm : null) }, [S.vibrate, S.vibrateOnSilent])
   const isGuest = useStore(s => s.isGuest())
+  const forceRecovery = /(?:^|[&#?])type=recovery(?:&|$)/.test(window.location.hash + window.location.search) || window.location.hash.includes('reset-password')
   const needsMobileOnboarding = useStore(s => s.needsMobileOnboarding)
   const langV = useLang()   // re-renders the whole shell when the language (pack) changes
   // Old English hashes remain valid, but every browser-facing navigation settles on the
@@ -224,8 +225,8 @@ function Shell() {
   const onboardingOpen = !MOBILE && ((!S.onboarded && !S.routines.length && !S.workouts.length && !S.active) || S.onboardingOfferLogin)
   const noTabs = inWorkout || canonical === ROUTES.coach || needsMobileOnboarding || onboardingOpen
 
-  const authed = user || isGuest
-  if (!ready && !authed) return (
+  const authed = !forceRecovery && (user || isGuest)
+  if (!ready && !authed && !forceRecovery) return (
     <div id="app">
       <div style={{ paddingTop: '44vh', display: 'flex', justifyContent: 'center', fontSize: 34, color: 'var(--label-3)' }}>
         <Icon name="dumbbell" />
@@ -310,7 +311,8 @@ function Shell() {
 
 export default function App() {
   const boot = useStore(s => s.boot)
-  useEffect(() => { boot() }, [boot])
+  const forceRecovery = /(?:^|[&#?])type=recovery(?:&|$)/.test(window.location.hash + window.location.search) || window.location.hash.includes('reset-password')
+  useEffect(() => { if (!forceRecovery) boot() }, [boot, forceRecovery])
   // Android system back — sheet, then page, then press-again-to-exit (see lib/back.js)
   useEffect(() => {
     let stop = null, gone = false

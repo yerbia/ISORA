@@ -85,6 +85,8 @@ h4.sec,.card h2,.sect-t,.inbox-h{font-size:13px;font-weight:600;letter-spacing:0
   display:flex;align-items:center;justify-content:center;background:var(--acc);color:var(--on-acc);
 }
 .ib-av .icn{--icon-stroke:2}
+.google-button{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.google-mark{width:17px;height:17px;flex:none}
 .ib-av.ghost{background:var(--surface-3);color:var(--label)}
 .ib-av.done{background:var(--acc-soft);color:var(--acc)}
 .ib-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
