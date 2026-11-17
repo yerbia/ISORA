@@ -21,6 +21,25 @@ create table if not exists public.push_subscriptions (
   primary key (user_id, endpoint)
 );
 
+-- Durable media for workout and progress photos. The API uses the service-role key for bytes;
+-- the browser only receives signed-in API responses and never accesses this bucket directly.
+create table if not exists public.media_files (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  hash text not null check (hash ~ '^[0-9a-f]{64}$'),
+  mime text not null,
+  ext text not null,
+  size bigint not null check (size > 0 and size <= 52428800),
+  storage_path text not null unique,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, hash)
+);
+
+alter table public.media_files enable row level security;
+insert into storage.buckets (id, name, public)
+values ('user-media', 'user-media', false)
+on conflict (id) do nothing;
+
 -- One instance-wide Coach configuration. Credentials inside config are already encrypted by
 -- the API with its DATA_DIR secret; clients never access this table directly.
 create table if not exists public.coach_config (

@@ -294,7 +294,7 @@ paths:
                     allow_guest: false
                     coach: { enabled: true, provider: compatible, providerLabel: "OpenAI-compatible endpoint", authMode: instance, community: false }
                 passwordLogin: { value: { invite_only: true, allow_guest: false, password_login: true } }
-                media: { value: { invite_only: false, allow_guest: true, media: { imageMB: 2, gifMB: 8, videoMB: 40, videoSec: 60, quotaMB: 200, workouts: true } } }
+                media: { value: { invite_only: false, allow_guest: true, media: { imageMB: 2, logicalMB: 2, gifMB: 8, videoMB: 40, videoSec: 60, quotaMB: 200, workouts: true } } }
 
   /api/me:
     get:
@@ -3415,6 +3415,7 @@ components:
         runs with `MEDIA_UPLOADS=0`.
       properties:
         imageMB: { type: number, description: 'A photo after the app re-encoded it, or a poster.' }
+        logicalMB: { type: number, description: 'Hard persisted-image cap; the effective image cap is the smaller of imageMB and logicalMB.' }
         gifMB: { type: number }
         videoMB: { type: number }
         videoSec: { type: number }

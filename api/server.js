@@ -30,7 +30,7 @@ import {
   listPasskeys, addPasskeyRecord, renamePasskeyRecord, removePasskeyRecord, passkeyRemovalRefused, MAX_PASSKEYS
 } from './passkeys-store.js';
 import { createDeviceLink, findDeviceLink, burnDeviceLink, dropDeviceLinks } from './device-link.js';
-import { createMediaStore, mediaLimits, mediaConfig, MediaError, HASH_RE } from './media.js';
+import { createMediaStore, mediaLimits, mediaConfig, MediaError, HASH_RE, referencedHashes } from './media.js';
 import { effectiveRoutineId } from './queue.js';
 import { stampPut } from './sync-stamps.js';
 import { atomicWrite as durableWrite } from './durable.js';
@@ -38,6 +38,7 @@ import { excusedOn, nudgeFor, nudgeWindowOpen, toneOf } from './nudge.js';
 import { createClient } from '@supabase/supabase-js';
 import { createCoachPersistence } from './coach/persistence.js';
 import { createAdminPersistence } from './admin/persistence.js';
+import { createMediaPersistence } from './media-persistence.js';
 
 const PORT = +(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || '/data';
@@ -51,6 +52,7 @@ const SUPABASE_SERVICE_ROLE_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY |
 // configuration. Without it, the API keeps the existing local-file fallback.
 const coachPersistence = createCoachPersistence({ url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY });
 const adminPersistence = createAdminPersistence({ url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY });
+const mediaPersistence = createMediaPersistence({ url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY });
 // Admin dashboard (issue): admins are matched by uid (or the admin flag FIRST_USER_ADMIN sets);
 // INVITE_ONLY gates new signups behind a code the admin generates. Off by default, so a fresh
 // self-hosted instance stays open.
@@ -1804,6 +1806,8 @@ const passkeyRoutes = {
 const MEDIA_LIMITS = mediaLimits(process.env);
 const MEDIA_ON = MEDIA_LIMITS.enabled;
 const MEDIA = createMediaStore({ dir: path.join(DATA, 'uploads'), limits: MEDIA_LIMITS, readState });
+// Vercel instances are ephemeral: the local store remains a cache, while Supabase Storage is the
+// durable copy when the deployment has Supabase configured.
 // Leftovers of uploads the previous process was receiving when it stopped.
 try { MEDIA.cleanTmp(); } catch (e) { console.error('media: boot cleanup failed', e.message); }
 // Per profile, not per address: every upload is signed in, and behind a proxy one address can be
@@ -1871,21 +1875,44 @@ async function sendMediaFile(res, f, hash) {
   catch { res.destroy(); }   // the client went away mid-download; nothing left to answer
 }
 
+function sendMediaBuffer(res, f, hash) {
+  res.writeHead(200, {
+    'Content-Type': f.mime,
+    'Content-Length': String(f.bytes.length),
+    'Cache-Control': 'private, no-store',
+    'X-Content-Type-Options': 'nosniff',
+    'Content-Security-Policy': "default-src 'none'; sandbox",
+    'Cross-Origin-Resource-Policy': 'same-origin',
+    'Content-Disposition': `inline; filename="${hash}.${f.ext}"`,
+    'X-Robots-Tag': 'noindex'
+  });
+  res.end(f.bytes);
+}
+
 const mediaRoutes = {
   // The raw bytes of one file, named by the sha256 the client computed. media.js checks the
   // hash, the magic bytes, the caps, the quota and the free disk; this route only adds the
   // session and the hourly budget.
   'PUT /api/media/{hash}': async (req, res) => {
-    const user = readSession(req);
+    const user = await requestUser(req);
     if (!user) { MEDIA.discard(req); return json(res, 401, { error: 'not signed in' }); }
     try { mediaThrottle(req, user, MEDIA_BURST); } catch (e) { MEDIA.discard(req); throw e; }
     req.allowSlowBody?.();   // a signed-in upload within its budget may take the half hour
     const r = await MEDIA.receive(user.id, req.mediaHash, req);
+    if (mediaPersistence) {
+      const local = MEDIA.file(user.id, req.mediaHash);
+      if (!local) throw new MediaError(503, 'media-persistence');
+      await mediaPersistence.put(user.id, { ...local, hash: req.mediaHash });
+    }
     json(res, r.status, r.body);
   },
   'GET /api/media/{hash}': async (req, res) => {
-    const user = readSession(req);
+    const user = await requestUser(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
+    if (mediaPersistence) {
+      const remote = await mediaPersistence.download(user.id, req.mediaHash);
+      if (remote) return sendMediaBuffer(res, remote, req.mediaHash);
+    }
     // Only ever the caller's own folder: another profile's file is exactly as missing as one
     // that was never uploaded.
     const f = MEDIA.file(user.id, req.mediaHash);
@@ -1895,25 +1922,27 @@ const mediaRoutes = {
   // Which of these the server does not have, so a device uploads only those. Answered from the
   // in-memory list of the caller's own folder.
   'POST /api/media/missing': async (req, res) => {
-    const user = readSession(req);
+    const user = await requestUser(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
     const body = await readBody(req);
     const hashes = body.hashes;
     if (!Array.isArray(hashes) || hashes.length > 1000 || !hashes.every(h => typeof h === 'string' && HASH_RE.test(h))) {
       throw new MediaError(400, 'bad-request', { error: 'hashes must be a list of at most 1000 lowercase sha256 hex strings' });
     }
+    if (mediaPersistence) return json(res, 200, await mediaPersistence.missing(user.id, hashes));
     json(res, 200, MEDIA.missing(user.id, hashes));
   },
   // "Reset everything": every file the caller's current state does not reference goes now,
   // without the grace. A state that cannot be read removes nothing.
   'POST /api/media/sweep': async (req, res) => {
-    const user = readSession(req);
+    const user = await requestUser(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
     await readBody(req);
     mediaThrottle(req, user, MEDIA_SWEEPS);
     const r = MEDIA.sweep(user.id, { graceMs: 0 });
+    const remote = mediaPersistence ? await mediaPersistence.sweep(user.id, new Set(referencedHashes(readState(user.id) || {})), { force: true }) : { removed: 0, bytes: 0 };
     audit(req, 'media.sweep', { user, msg: `${r.removed} file(s), ${(r.freedBytes / 1048576).toFixed(1)} MB${r.skipped ? ', state unreadable' : ''}` });
-    json(res, 200, { removed: r.removed, freedBytes: r.freedBytes, usage: MEDIA.usage(user.id) });
+    json(res, 200, { removed: r.removed + remote.removed, freedBytes: r.freedBytes + remote.bytes, usage: mediaPersistence ? await mediaPersistence.usage(user.id) : MEDIA.usage(user.id) });
   }
 };
 

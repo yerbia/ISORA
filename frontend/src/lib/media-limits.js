@@ -36,6 +36,7 @@ export function limitsFrom(config) {
   const out = { ...DEFAULT_LIMITS }
   if (!m || typeof m !== 'object') return out
   for (const k of ['imageMB', 'gifMB', 'videoMB', 'videoSec']) if (pos(m[k])) out[k] = m[k]
+  if (pos(m.logicalMB)) out.imageMB = Math.min(out.imageMB, m.logicalMB)
   // 0 is a real answer for the quota (no cap), not a missing one.
   if (typeof m.quotaMB === 'number' && Number.isFinite(m.quotaMB) && m.quotaMB >= 0) out.quotaMB = m.quotaMB
   return out

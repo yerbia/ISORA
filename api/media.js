@@ -68,7 +68,8 @@ export function mediaLimits(env = process.env) {
   return {
     enabled: !OFF.test(String(env.MEDIA_UPLOADS || '').trim()),
     quotaMB: num('MEDIA_QUOTA_MB', 200, 0),              // 0 = no cap
-    imageMB: num('MEDIA_IMAGE_MAX_MB', 2, 0.001),
+    logicalMB: num('MEDIA_LOGICAL_MAX_MB', 2, 0.001),    // hard cap for a persisted still image
+    imageMB: Math.min(num('MEDIA_IMAGE_MAX_MB', 2, 0.001), num('MEDIA_LOGICAL_MAX_MB', 2, 0.001)),
     gifMB: num('MEDIA_GIF_MAX_MB', 8, 0.001),
     videoMB: num('MEDIA_VIDEO_MAX_MB', 40, 0.001),
     videoSec: num('MEDIA_VIDEO_MAX_SEC', 60, 1),
@@ -82,7 +83,7 @@ export function mediaLimits(env = process.env) {
 // `workouts: true`: this server keeps the files a logged workout's `media` names (its GC walks
 // workouts[].media), so a signed-in client may offer attaching them. A server from before says
 // nothing, and the client offers them on custom exercises only.
-export const mediaConfig = l => ({ imageMB: l.imageMB, gifMB: l.gifMB, videoMB: l.videoMB, videoSec: l.videoSec, quotaMB: l.quotaMB, workouts: true });
+export const mediaConfig = l => ({ imageMB: l.imageMB, logicalMB: l.logicalMB, gifMB: l.gifMB, videoMB: l.videoMB, videoSec: l.videoSec, quotaMB: l.quotaMB, workouts: true });
 
 /* ---------------------------------------------------------------- errors */
 
@@ -90,6 +91,7 @@ const MESSAGES = {
   'bad-request': 'bad request',
   'media-type': 'that file type is not accepted',
   'media-too-large': 'that file is too large',
+  'media-persistence': 'the file could not be saved permanently',
   'media-quota': 'your space for photos and videos is full',
   'media-invalid': 'that video could not be read',
   'media-too-long': 'that video is too long',
