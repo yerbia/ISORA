@@ -8,6 +8,7 @@ import { DEMO, PERSONAL, REPO } from '../lib/demo.js'
 import { guestAllowed } from '../lib/guest.js'
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
+import EntrenLogo from '../components/EntrenLogo.jsx'
 
 function GoogleMark() {
   return <svg className="google-mark" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.23c0-.69-.06-1.35-.18-1.98H12v3.75h5.38a4.6 4.6 0 0 1-2 3.02v2.5h3.24c1.9-1.75 2.98-4.32 2.98-7.29Z"/><path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.62-2.48l-3.24-2.5c-.9.6-2.04.96-3.38.96-2.6 0-4.8-1.76-5.59-4.13H3.06v2.58A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.41 13.85A6 6 0 0 1 6.1 12c0-.64.11-1.27.31-1.85V7.57H3.06A10 10 0 0 0 2 12c0 1.6.38 3.1 1.06 4.43l3.35-2.58Z"/><path fill="#EA4335" d="M12 6.02c1.47 0 2.79.5 3.83 1.49l2.87-2.87C16.95 2.92 14.7 2 12 2a10 10 0 0 0-8.94 5.57l3.35 2.58C7.2 7.78 9.4 6.02 12 6.02Z"/></svg>
@@ -109,7 +110,7 @@ export default function Login() {
     const { data: sub } = supabase.auth.onAuthStateChange(event => { if (event === 'PASSWORD_RECOVERY') setRecovery(true) })
     return () => sub.subscription.unsubscribe()
   }, [])
-  const head = <><img className="login-logo" src="/logo.png" alt="Entren.ar" /><h1 style={{ fontSize: 34, fontWeight: 700, letterSpacing: '-.028em', margin: '10px 0 4px' }}>Entren.ar</h1></>
+  const head = <><img className="login-logo" src="/logo.png" alt="" /><h1 className="login-wordmark"><EntrenLogo /></h1></>
   const wrap = { display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '78vh', textAlign: 'center' }
   if (PERSONAL) return <div className="narrow" style={wrap}>{head}<div className="muted" style={{ marginBottom: 30 }}>{t('Everything stays on this device.')}</div><Button variant="primary" icon="play" onClick={() => setGuest(true)}>{t('Start')}</Button></div>
   if (DEMO) return <div className="narrow" style={wrap}>{head}<div className="muted" style={{ marginBottom: 30 }}>{t('Live demo. Everything stays in this browser.')}</div><Button variant="primary" icon="play" onClick={() => setGuest(true)}>{t('Start the demo')}</Button><div className="dim small" style={{ marginTop: 22 }}><a href={REPO} target="_blank" rel="noopener">{t('Self-host it in a minute →')}</a></div></div>

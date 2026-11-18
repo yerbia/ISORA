@@ -26,7 +26,7 @@ import { AccountForm } from '../views/Login.jsx'
 // The coach is an LLM behind /api/coach-chat; when that is not available (no key, offline) the
 // same chat runs from the script, so the first open never depends on the network.
 
-const OPENER = (lang, unit, buddy) => `[ENTREN.AR was just opened for the first time. App language: ${lang}. Weight unit: ${unit}. In this chat you are ${buddy.name}, my ENTREN.AR buddy (a little square blue block creature) that I just met: speak as ${buddy.name}, a warm, playful companion. Greet me and start.]`
+const OPENER = (lang, unit, buddy) => `[Entren.ar was just opened for the first time. App language: ${lang}. Weight unit: ${unit}. In this chat you are ${buddy.name}, my Entren.ar buddy (a little square blue block creature) that I just met: speak as ${buddy.name}, a warm, playful companion. Greet me and start.]`
 
 function OnboardingAccountSheet({ close, onDone, initialMode = 'signup' }) {
   const [mode, setMode] = useState(initialMode)
@@ -258,8 +258,8 @@ function OnboardingChat() {
   if (!welcomed) return <Welcome onDone={() => setWelcomed(true)} onSignIn={openSignIn} />
   if (!picked) return <div className="ob" ref={root} role="dialog" aria-label={t('Welcome to ISORA')}>
     <div className="ob-head">
-      <span className="ob-av"><img className="ob-logo" src="/logo.png" alt="" /></span>
-      <div className="ob-head-t"><div className="ob-name">{t('Welcome to ISORA')}</div><div className="ob-sub">{t('Your ISORA buddy')}</div></div>
+      <span className="ob-av ob-logo-av"><img className="ob-logo" src="/logo.png" alt="" /></span>
+      <div className="ob-head-t"><div className="ob-name">{t('Welcome to ISORA')}</div></div>
       <button type="button" className="ob-skip" onClick={skip}>{t('Skip')}</button>
     </div>
     <div className="ob-thread ob-pick">

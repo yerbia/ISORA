@@ -851,7 +851,7 @@ export default function Settings({ page = null, find = null, via = null }) {
         <Row icon="info" iconTint="var(--grey)" title={t('Version')} value={'v' + __APP_VERSION__} />
         {MOBILE
           ? android && <Row icon="download" iconTint="var(--green)"
-              title={updateInfo?.hasUpdate ? `Actualizar a ENTREN.AR v${updateInfo.latestVersion}` : t('Check for updates')}
+              title={updateInfo?.hasUpdate ? `Actualizar a Entren.ar v${updateInfo.latestVersion}` : t('Check for updates')}
               subtitle={checking ? t('Checking…') : t('You have v{0}', __APP_VERSION__)}
               accessory="chevron"
               onClick={() => (updateInfo?.hasUpdate ? onUpdateRowClick() : checkNow())} />
@@ -863,7 +863,7 @@ export default function Settings({ page = null, find = null, via = null }) {
           build there is no address bar and no about box, so without this there is no way to tell
           which build you are running, or whether an update actually installed. */}
       <div className="dim small sp-version">
-        ENTREN.AR v{__APP_VERSION__} · {t('free & open source (AGPL v3)')}<br />
+        Entren.ar v{__APP_VERSION__} · {t('free & open source (AGPL v3)')}<br />
         {/* AGPL attribution: ISORA is a modified openGym. Kept in English like the media line. */}
         Built on <a href="https://github.com/DuarteSantos8/openGym" target="_blank" rel="noopener">openGym</a> by Duarte Santos.<br />
         {/* Attribution the media licence asks for word for word (agreement §8c), so it is not translated */}
@@ -957,7 +957,11 @@ function SettingsRoot({ ctx, preview, open, user, sync, home, go }) {
     }
     : MOBILE ? { title: t('This phone'), sub: t('All data stays on this phone') }
     : { title: t('Guest'), sub: t('Your data lives on this device. Sign in to sync.') }
-  const initial = user && !DEMO ? String(user.name || '?').trim().charAt(0).toUpperCase() : null
+  // The account card must reflect the avatar chosen in the profile. Keep the account name as
+  // a fallback for older profiles that have no stored name yet, since choosing the initial is
+  // represented by an empty avatar/photo in the profile data.
+  const profile = cleanProfile(S.profile)
+  const accountProfile = user && !DEMO ? { ...profile, name: profile.name || user.name || '' } : null
   return <div className="narrow">
     <div className="sp-nav">
       <button className="sp-back" onClick={home} aria-label={t('Home')}><Icon name="chevronLeft" /><span>{t('Home')}</span></button>
@@ -975,8 +979,8 @@ function SettingsRoot({ ctx, preview, open, user, sync, home, go }) {
       <Section>
         {/* In the personal app the card is you: your avatar, and a tap opens the profile. */}
         <button className="lrow tap sp-acct" onClick={() => (PERSONAL ? profileSheet() : open('account'))}>
-          {PERSONAL ? <Avatar profile={S.profile} size={52} />
-            : <span className={'sp-avatar' + (initial ? ' on' : '')} aria-hidden="true">{initial || <Icon name="personCircle" />}</span>}
+          {PERSONAL || accountProfile ? <Avatar profile={PERSONAL ? S.profile : accountProfile} size={52} />
+            : <span className="sp-avatar" aria-hidden="true"><Icon name="personCircle" /></span>}
           <span className="lrow-m"><span className="lrow-t">{acct.title}</span><span className="lrow-s">{acct.sub}</span></span>
           <Icon name="chevronRight" className="lrow-c" />
         </button>
@@ -987,7 +991,7 @@ function SettingsRoot({ ctx, preview, open, user, sync, home, go }) {
             value={preview[id]?.() || null} accessory="chevron" onClick={() => open(id)} className="sp-root-row" />)}
         </Section>
       ))}
-      <div className="dim small sp-version">ENTREN.AR v{__APP_VERSION__}</div>
+      <div className="dim small sp-version">Entren.ar v{__APP_VERSION__}</div>
     </>}
   </div>
 }

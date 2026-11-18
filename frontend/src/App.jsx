@@ -78,6 +78,10 @@ const resolveTheme = theme => theme === 'light' || theme === 'dark'
   ? theme
   : (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
 
+const guestEmbedRequested = () => {
+  try { return new URLSearchParams(window.location.search).get('embed') === 'guest' } catch { return false }
+}
+
 function applyPrefs(theme, accent) {
   const de = document.documentElement
   de.dataset.theme = resolveTheme(theme)
@@ -101,6 +105,11 @@ function Shell() {
   // native side as an alarm (#375). buzzAsAlarm answers false off Android, so iOS buzzes as before.
   useEffect(() => { setAlarmBuzzer(MOBILE && S.vibrate !== false && S.vibrateOnSilent ? buzzAsAlarm : null) }, [S.vibrate, S.vibrateOnSilent])
   const isGuest = useStore(s => s.isGuest())
+  const embeddedGuest = guestEmbedRequested()
+  const setGuest = useStore(s => s.setGuest)
+  useEffect(() => {
+    if (embeddedGuest && !user && !isGuest) setGuest(true)
+  }, [embeddedGuest, user, isGuest, setGuest])
   const forceRecovery = /(?:^|[&#?])type=recovery(?:&|$)/.test(window.location.hash + window.location.search) || window.location.hash.includes('reset-password')
   const needsMobileOnboarding = useStore(s => s.needsMobileOnboarding)
   const langV = useLang()   // re-renders the whole shell when the language (pack) changes
@@ -222,10 +231,10 @@ function Shell() {
   }, [inWorkout])
   // The chat owns the bottom of the screen as well: its composer sits where the tabs would be.
   // The first-launch card has no tabs either: they changed the route behind it.
-  const onboardingOpen = !MOBILE && ((!S.onboarded && !S.routines.length && !S.workouts.length && !S.active) || S.onboardingOfferLogin)
+  const onboardingOpen = !embeddedGuest && !MOBILE && ((!S.onboarded && !S.routines.length && !S.workouts.length && !S.active) || S.onboardingOfferLogin)
   const noTabs = inWorkout || canonical === ROUTES.coach || needsMobileOnboarding || onboardingOpen
 
-  const authed = !forceRecovery && (user || isGuest)
+  const authed = !forceRecovery && (user || isGuest || embeddedGuest)
   if (!ready && !authed && !forceRecovery) return (
     <div id="app">
       <div style={{ paddingTop: '44vh', display: 'flex', justifyContent: 'center', fontSize: 34, color: 'var(--label-3)' }}>

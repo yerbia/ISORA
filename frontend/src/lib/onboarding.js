@@ -221,12 +221,12 @@ export function scriptedFocus(p, lang = 'en') {
   const plan = pickPlan(p)
   if (String(lang).toLowerCase().startsWith('es')) {
     return {
-      focus: (p.name ? p.name + ', ' : '') + 'con ' + p.daysPerWeek + ' días por semana me centraría en ' + (GOAL_FOCUS_ES[p.goal] || GOAL_FOCUS_ES.fitness) + '. ENTREN.AR te ha preparado ' + PLAN_REASON_ES[plan] + (p.equipment.length ? ', adaptada a tu equipamiento' : '') + '. ' + (p.experience === 'beginner' ? 'Empieza con poco peso y aprende bien los movimientos; las cargas llegarán.' : 'Registra cada serie y deja que la progresión haga el trabajo.'),
+      focus: (p.name ? p.name + ', ' : '') + 'con ' + p.daysPerWeek + ' días por semana me centraría en ' + (GOAL_FOCUS_ES[p.goal] || GOAL_FOCUS_ES.fitness) + '. Entren.ar te ha preparado ' + PLAN_REASON_ES[plan] + (p.equipment.length ? ', adaptada a tu equipamiento' : '') + '. ' + (p.experience === 'beginner' ? 'Empieza con poco peso y aprende bien los movimientos; las cargas llegarán.' : 'Registra cada serie y deja que la progresión haga el trabajo.'),
       focusAreas: p.goal === 'strength' ? ['ejercicios compuestos', 'sobrecarga progresiva'] : p.goal === 'muscle' ? ['volumen', 'conexión mente-músculo'] : p.goal === 'fitness' ? ['acondicionamiento', 'constancia'] : ['movilidad', 'constancia'],
     }
   }
   return {
-    focus: `${p.name ? p.name + ', ' : ''}with ${p.daysPerWeek} days a week I'd focus on ${GOAL_FOCUS[p.goal] || GOAL_FOCUS.fitness}. ENTREN.AR has set you up with ${PLAN_REASON[plan]}${p.equipment.length ? ', fitted to your equipment' : ''}. ${p.experience === 'beginner' ? 'Start light and learn the movements; the weights will come.' : 'Log every set and let progression do the work.'}`,
+      focus: `${p.name ? p.name + ', ' : ''}with ${p.daysPerWeek} days a week I'd focus on ${GOAL_FOCUS[p.goal] || GOAL_FOCUS.fitness}. Entren.ar has set you up with ${PLAN_REASON[plan]}${p.equipment.length ? ', fitted to your equipment' : ''}. ${p.experience === 'beginner' ? 'Start light and learn the movements; the weights will come.' : 'Log every set and let progression do the work.'}`,
     focusAreas: p.goal === 'strength' ? ['compound lifts', 'progressive overload'] : p.goal === 'muscle' ? ['volume', 'mind-muscle connection'] : p.goal === 'fitness' ? ['conditioning', 'consistency'] : ['mobility', 'consistency'],
   }
 }

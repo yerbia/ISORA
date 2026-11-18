@@ -8,6 +8,7 @@ import Buddy from './Buddy.jsx'
 import IsoraMark from './IsoraMark.jsx'
 import Icon from './Icon.jsx'
 import { Button } from './ui.jsx'
+import EntrenLogo from './EntrenLogo.jsx'
 
 // The welcome: four short screens the very first time ISORA opens, before Iso's setup chat.
 // Iso introduces itself, a round of Rest Blast plays by itself, a lift climbs week by week, and
@@ -92,7 +93,7 @@ export default function Welcome({ onDone, onSignIn, replay = false }) {
   return <div className={'wel' + (replay ? ' replay' : '')} ref={root} role="dialog" aria-label={t('Welcome to ISORA')}
     onPointerDown={down} onPointerUp={up} onPointerCancel={() => { drag.current = null }}>
     <div className="wel-top">
-      <span className="wel-brand"><img className="wel-logo" src="/logo.png" alt="" /><b>Entren.ar</b></span>
+      <span className="wel-brand"><img className="wel-logo" src="/logo.png" alt="" /><EntrenLogo /></span>
       <div className="wel-actions">
         {onSignIn && <button type="button" className="wel-signin" onClick={onSignIn}>{t('Sign in')}</button>}
         <button type="button" className="wel-skip" onClick={onDone}>{last ? '' : t('Skip')}</button>

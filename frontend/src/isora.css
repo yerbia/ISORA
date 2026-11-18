@@ -12,6 +12,8 @@
    lavender is recovery (rest days, the rest bar, Rest Blast), amber is records only. The page is
    true black or white; cards are neutral greys. */
 
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@800&display=swap');
+
 @font-face{
   font-family:'Archivo';font-style:normal;font-weight:100 900;font-stretch:62% 125%;font-display:swap;
   src:url(/fonts/archivo-latin-ext.woff2) format('woff2');
@@ -53,6 +55,15 @@
 .brand{display:inline-flex;align-items:center;gap:9px;font-family:var(--display);font-stretch:112%;font-weight:800;letter-spacing:.01em}
 .brand .isora-mark{width:1em;height:1em;flex:none;border-radius:.24em}
 .brand-logo{width:1em;height:1em;flex:none;border-radius:.24em;object-fit:cover}
+.entren-logo{
+  display:inline-flex;align-items:baseline;max-width:100%;white-space:nowrap;
+  color:#17191B;font-family:'Montserrat',sans-serif;font-size:1em;font-weight:800;
+  letter-spacing:-.035em;line-height:1;
+}
+.entren-logo--auto{color:#17191B}
+.entren-logo--dark{color:#fff}
+:root:not([data-theme="light"]) .entren-logo--auto{color:#fff}
+.entren-logo-dot{color:#34C759}
 .sheet h3{font-size:20px;font-weight:700;letter-spacing:-.018em}
 /* every section header in the app speaks the same way: small, semibold, sentence case */
 h4.sec,.card h2,.sect-t,.inbox-h{font-size:13px;font-weight:600;letter-spacing:0;color:var(--label-2);text-transform:none}
@@ -160,6 +171,7 @@ h4.sec,.card h2,.sect-t,.inbox-h{font-size:13px;font-weight:600;letter-spacing:0
 
 @media (prefers-reduced-motion:reduce){ #rest-game,#timer{animation:none} }
 .login-logo{display:block;width:84px;height:84px;margin:0 auto;object-fit:cover;border-radius:22px;box-shadow:0 12px 24px color-mix(in srgb,var(--acc) 28%,transparent)}
+.login-wordmark{font-size:34px;margin:10px 0 4px;line-height:1}
 
 /* ------------------------------------------------------- grouped lists -- */
 /* Every list of rows in the app (Plan's week, History, Stats' recent workouts, the library, the
@@ -314,6 +326,7 @@ button.avatar:active{transform:scale(.94)}
 body.ob-open{position:fixed;inset-inline:0;width:100%;overflow:hidden}
 .ob-head{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:var(--hair) solid var(--sep)}
 .ob-av{width:40px;height:40px;border-radius:50%;background:var(--surface-2);display:flex;align-items:center;justify-content:center;flex:none}
+.ob-logo-av{background:none;border-radius:8px}
 .ob-logo{width:30px;height:30px;border-radius:8px;object-fit:cover}
 .ob-head-t{flex:1;min-width:0}
 .ob-name{font-weight:700;font-size:17px}

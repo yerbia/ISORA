@@ -27,6 +27,7 @@ import ThemeToggle from '../components/ThemeToggle.jsx'
 import { BuddyCard } from '../components/BuddyParts.jsx'
 import { Avatar, profileSheet, recordsSheet, recordsOf, setText } from '../components/ProfileSheet.jsx'
 import { cleanProfile, greetingFor } from '../lib/profile.js'
+import EntrenLogo from '../components/EntrenLogo.jsx'
 
 // Home = what to do now + a quick glance. Deep charts & history live in Stats.
 export default function Home() {
@@ -137,7 +138,7 @@ export default function Home() {
     <div className="hdr home-hdr">
       <WeekRing done={doneThisWeek} target={prof.weekTarget}><Avatar profile={S.profile} size={44} onClick={profileSheet} label={t('Your profile')} /></WeekRing>
       <div className="home-hdr-txt">
-        <h1 className={prof.name ? 'greet' : undefined}>{user ? t('Hi {0}', prof.name || String(user.name || '').trim().split(/\s+/)[0]) : prof.name ? t(greetingFor(today.getHours()), prof.name) : <span className="brand"><img className="brand-logo" src="/logo.png" alt="" />Entren.ar</span>}</h1>
+        <h1 className={prof.name ? 'greet' : undefined}>{user ? t('Hi {0}', prof.name || String(user.name || '').trim().split(/\s+/)[0]) : prof.name ? t(greetingFor(today.getHours()), prof.name) : <EntrenLogo />}</h1>
         <div className="sub">{today.toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}
           {prof.weekTarget > 0 && <span className={'wk-goal' + (doneThisWeek >= prof.weekTarget ? ' met' : '')}>{t('{0} of {1} this week', doneThisWeek, prof.weekTarget)}</span>}</div>
       </div>

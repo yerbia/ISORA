@@ -129,7 +129,11 @@ describe('the root', () => {
     expect(titles()).toContain('Reminders')
     expect(titles()).not.toContain('AI Coach')
     expect(host.querySelector('.sp-acct .lrow-t').textContent).toBe('Dana')
-    expect(host.querySelector('.sp-avatar').textContent).toBe('D')
+    expect(host.querySelector('.sp-acct .avatar').textContent).toBe('D')
+    mocks.S.profile = { name: 'Dana', avatar: '🔥' }
+    mount()
+    expect(host.querySelector('.sp-acct .avatar').textContent).toBe('🔥')
+    expect(host.querySelector('.sp-acct .avatar').classList.contains('pic')).toBe(true)
     mocks.user = null
     mocks.MOBILE = true
     mount()
