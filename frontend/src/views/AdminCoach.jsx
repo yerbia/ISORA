@@ -347,7 +347,7 @@ export default function AdminCoach() {
                 ? 'One personal account, already in use by one profile. Every other profile is refused, so nobody spends somebody else\'s subscription.'
                 : 'One personal account. The first profile to use it becomes the only one allowed to; every other profile is then refused. Paste an API key instead if the whole instance should have the Coach.'}</div>
 
-          <div className="adm-group-t" style={{ marginTop: 14 }}>Isolation</div>
+          <div className="adm-group-t" style={{ marginTop: 14 }}>Trinolation</div>
           <div className="adm-hint">{d.unprivileged && !d.unprivileged.ok
             ? <span style={{ color: 'var(--red)' }}>Jobs are blocked: {d.unprivileged.why}. Nothing runs until this is fixed.</span>
             : d.unprivileged?.dropped

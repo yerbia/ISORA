@@ -5,7 +5,7 @@ import Buddy from './Buddy.jsx'
 import { Button } from './ui.jsx'
 import { Typewriter } from './BuddyParts.jsx'
 
-// Iso's guide: a few steps that spotlight a part of the screen while Iso stands beside it,
+// Trino's guide: a few steps that spotlight a part of the screen while Trino stands beside it,
 // points at it and says what it is. One tour for Home after the first setup, one for the first
 // workout; Settings → Look & Home offers them again. Which ones are still owed is kept in local
 // storage (isora_tour), not in the profile: it is this phone's first time, not the account's.
@@ -15,7 +15,7 @@ export const owedTours = () => { try { return new Set((localStorage.getItem(OWED
 export const oweTours = names => { try { localStorage.setItem(OWED_KEY, [...new Set(names)].join(',')) } catch {} }
 export const settleTour = name => { const s = owedTours(); s.delete(name); oweTours([...s]) }
 
-// The steps: the element (first one found wins), what Iso says, and where Iso stands.
+// The steps: the element (first one found wins), what Trino says, and where Trino stands.
 const STEPS = {
   home: () => [
     { sel: ['.today-hero'], say: t('This is today. One tap starts the workout, or opens what you did.') },
@@ -98,7 +98,7 @@ function TourOverlay({ name }) {
   }, [i])
   if (!step || hidden) return null
 
-  // Iso and the bubble stand below the target when there is room, above it otherwise
+  // Trino and the bubble stand below the target when there is room, above it otherwise
   const vh = window.innerHeight
   const below = rect ? rect.top + rect.height + 230 < vh : true
   const point = rect ? (below ? 'up' : 'down') : null
@@ -107,7 +107,7 @@ function TourOverlay({ name }) {
     : { bottom: '20%' }
   const last = i + 1 >= steps.length
   return (
-    <div className={'tour' + (rect ? ' has-spot' : '')} role="dialog" aria-label={t('Iso’s guide')} onClick={next}>
+    <div className={'tour' + (rect ? ' has-spot' : '')} role="dialog" aria-label={t('Trino’s guide')} onClick={next}>
       {rect && <div className="tour-spot" style={rect} />}
       <div className={'tour-card ' + (below ? 'is-below' : 'is-above')} style={bubbleStyle} onClick={e => e.stopPropagation()}>
         <div className="tour-iso"><Buddy mood={step.cheer ? 'cheer' : 'hyped'} size={92} point={point} talking={talking} react={react} /></div>

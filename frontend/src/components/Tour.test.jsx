@@ -22,7 +22,7 @@ beforeEach(() => {
 afterEach(() => { act(() => root.unmount()); host.remove(); screen.remove(); vi.useRealTimers() })
 const tick = ms => act(() => { vi.advanceTimersByTime(ms) })
 
-describe('Iso’s guide, when the screen moves on without it', () => {
+describe('Trino’s guide, when the screen moves on without it', () => {
   it('waits out of sight while Rest Blast covers the page, then comes back', () => {
     act(() => root.render(<TourHost />))
     act(() => startTour('workout'))

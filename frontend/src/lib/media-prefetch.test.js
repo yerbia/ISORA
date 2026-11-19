@@ -33,14 +33,15 @@ describe('planMediaUrls', () => {
     expect(planMediaUrls({ routines: [{ ex: [{ id: bench.id }] }] }, undefined)).toEqual([])
   })
 
-  it('leaves out media a build points at another origin, which never passes through the worker', async () => {
-    // The demo build's media comes from a CDN (VITE_IMG_BASE/VITE_GIF_BASE, read at load).
+  it('leaves out arbitrary CDN media, while keeping the supported HD exercise pack cacheable', async () => {
+    // Arbitrary VITE_* media comes from a CDN and must stay out of the worker. The fixed HD
+    // exercise pack is different: public/sw.js explicitly handles cdn.jsdelivr.net.
     vi.resetModules()
     vi.stubEnv('VITE_IMG_BASE', 'https://cdn.test/images/')
     vi.stubEnv('VITE_GIF_BASE', 'https://cdn.test/videos/')
     try {
       const fresh = await import('./media-prefetch.js')
-      expect(fresh.planMediaUrls({ routines: [{ ex: [{ id: bench.id }] }] }, BASE)).toEqual([])
+      expect(fresh.planMediaUrls({ routines: [{ ex: [{ id: bench.id }] }] }, BASE)).toEqual([gifSrc(bench)])
     } finally { vi.unstubAllEnvs(); vi.resetModules() }
   })
 })

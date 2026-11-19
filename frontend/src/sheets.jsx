@@ -3181,7 +3181,7 @@ export const supersetSheet = (meta, onSave) => ui().openSheet(close => <Superset
    by tapping "+ Drop"/"+ Burst", which appends with the same suggested-next-value math. */
 
 // Shown when the last exercise's last set is checked — finish, or keep going.
-// Iso, when you have met it, celebrates in place of the icon (components/Buddy.jsx)
+// Trino, when you have met it, celebrates in place of the icon (components/Buddy.jsx)
 const isoMet = () => !!useStore.getState().S.buddy?.kind
 function WorkoutComplete({ close }) {
   return <div style={{ textAlign: 'center', padding: '8px 0' }}>

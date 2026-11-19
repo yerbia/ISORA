@@ -742,9 +742,9 @@ export default function Settings({ page = null, find = null, via = null }) {
       {PERSONAL && !MOBILE && installState() === 'standalone' && <Section footer={t('Full screen, works offline, and the lock-screen rest alert can reach you here.')}>
         <Row icon="checkCircle" iconTint="var(--green)" title={t('On your home screen')} subtitle={t('ISORA is running as an app')} />
       </Section>}
-      {PERSONAL && <Section footer={t('The welcome is the four screens from the first open. Iso’s guide walks you round Home and your first workout.')}>
+      {PERSONAL && <Section footer={t('The welcome is the four screens from the first open. Trino’s guide walks you round Home and your first workout.')}>
         <Row icon="play" iconTint="var(--acc)" title={t('Play the welcome again')} accessory="chevron" onClick={showWelcome} />
-        <Row icon="sparkles" iconTint="var(--acc)" title={t('Show Iso’s guide again')} accessory="chevron"
+        <Row icon="sparkles" iconTint="var(--acc)" title={t('Show Trino’s guide again')} accessory="chevron"
           onClick={() => { oweTours(['home', 'workout']); nav('/home') }} />
       </Section>}
       <Section footer={DEMO || MOBILE || !user ? undefined : t('synced with your profile')}>

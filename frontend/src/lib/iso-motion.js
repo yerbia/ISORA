@@ -1,5 +1,5 @@
-// Iso's body, simulated (components/Buddy.jsx draws it). Instead of looping keyframes, every frame
-// steps a handful of damped springs and a little gravity, so Iso has weight: a jelly body that
+// Trino's body, simulated (components/Buddy.jsx draws it). Instead of looping keyframes, every frame
+// steps a handful of damped springs and a little gravity, so Trino has weight: a jelly body that
 // squashes and wobbles, arms that lag behind and flap, real jumps with a landing, eyes that blink
 // and wander, a lean toward whatever it looks at, and a stream of small behaviours picked for its
 // mood (dance, wave, spin, head tilt, stretch, yawn …). The face is simulated too: eyebrows, how
@@ -10,7 +10,7 @@
 const G = 1100                         // gravity, in drawing units (the body is 84 wide) per s²
 const SUB = 1 / 120                    // physics substep, s
 
-// what Iso gets up to, by mood, and how long it waits between two things (s)
+// what Trino gets up to, by mood, and how long it waits between two things (s)
 export const BEHAVIORS = {
   hyped: { list: ['hop', 'dance', 'wave', 'spin', 'look', 'hop', 'tilt'], gap: [1.6, 3.4] },
   cheer: { list: ['hop', 'spin', 'dance', 'hop'], gap: [1, 2.2] },
@@ -74,7 +74,7 @@ const spring = (st, x, v, target, k, c, dt) => {
   st[x] += st[v] * dt
 }
 
-/** Throw Iso up so it rises `h` units; `spin` turns it once round on the way. */
+/** Throw Trino up so it rises `h` units; `spin` turns it once round on the way. */
 export function jump(st, h, spin = false) {
   if (st.air) { st.jv = Math.min(st.jv, -Math.sqrt(2 * G * h) * 0.8); return }
   st.air = true
@@ -85,7 +85,7 @@ export function jump(st, h, spin = false) {
   if (spin) { st.spinning = true; st.spinFrom = st.spin }
 }
 
-/** A reaction, over whatever Iso was doing with its face. */
+/** A reaction, over whatever Trino was doing with its face. */
 export function react(st, kind) {
   if (!REACTIONS[kind]) return
   st.rx = kind; st.rxT = 0
@@ -115,7 +115,7 @@ export function nudge(st, amount) {
 
 /**
  * Advance `dt` seconds. `pointer` is {dx, dy} toward the finger (−1…1) while it moves nearby, else
- * null; `talking` opens and shuts the mouth (and Iso glances at what it says, `talkSide`).
+ * null; `talking` opens and shuts the mouth (and Trino glances at what it says, `talkSide`).
  * Returns the pose for the drawing.
  */
 export function step(st, { dt, mood = 'chill', pointer = null, talking = false, talkSide = 1, small = false, point = null }, rng = Math.random) {

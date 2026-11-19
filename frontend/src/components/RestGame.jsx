@@ -80,7 +80,7 @@ function Game({ secondsLeft, total, forIdx, hidden, onNextSet, onHide, onScore }
   const hintsOn = useStore(s => s.S.restHints !== false)
   const active = useStore(s => s.S.active)
   const unit = useStore(s => s.S.unit)
-  const [rx, setRx] = useState(null)            // { kind, id }: Iso's reaction to the last move
+  const [rx, setRx] = useState(null)            // { kind, id }: Trino's reaction to the last move
   const [combo, setCombo] = useState(0)
   const [over, setOver] = useState(null)        // null | 'stuck' | 'time'
   const [lifted, setLifted] = useState(null)    // the tray index in hand
@@ -89,7 +89,7 @@ function Game({ secondsLeft, total, forIdx, hidden, onNextSet, onHide, onScore }
   const [pop, setPop] = useState(null)          // { text, id }: the floating score of the last clear
   const [flash, setFlash] = useState(null)      // { rows, cols, id }: lines just cleared
   const [landed, setLanded] = useState(null)    // { cells, id }: the piece just placed, which lands with a bounce
-  const [cheer, setCheer] = useState(0)         // a clear: Iso hops
+  const [cheer, setCheer] = useState(0)         // a clear: Trino hops
   const [shake, setShake] = useState(0)         // stuck: the board shakes once
   const boardRef = useRef(null)
   const ghostRef = useRef(null)
@@ -312,7 +312,7 @@ function Game({ secondsLeft, total, forIdx, hidden, onNextSet, onHide, onScore }
   )
 }
 
-// The way back in while the game is tucked away: a handle on the rest bar's top edge, with Iso
+// The way back in while the game is tucked away: a handle on the rest bar's top edge, with Trino
 // and this round's score. It measures the bar, which stands higher when the tab bar is under it.
 function Handle({ score, onOpen }) {
   const bud = cleanBuddy(useStore(s => s.S.buddy))

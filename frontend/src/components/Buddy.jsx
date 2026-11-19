@@ -1,8 +1,8 @@
 import { useId, useState, useRef, useEffect } from 'react'
-import { KIND_COLOR, gearFor } from '../lib/buddy.js'
+import { DEFAULT_NAME, KIND_COLOR, gearFor } from '../lib/buddy.js'
 import * as iso from '../lib/iso-motion.js'
 
-// Iso, drawn (lib/buddy.js): a glossy toy block in the app's blue, with a face for its mood, little
+// Trino, drawn (lib/buddy.js): a glossy toy block in the app's blue, with a face for its mood, little
 // arms and feet, and the gear its level has earned. Plain SVG lit by gradients: the body is the
 // accent colour, light and shade are white and black laid over it, so any accent still looks lit.
 // It moves by simulation, not keyframes (lib/iso-motion.js): a jelly body on springs, arms that
@@ -126,7 +126,7 @@ function Gear({ level, id }) {
 
 const calm = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-// one pointer listener for every Iso on screen
+// one pointer listener for every Trino on screen
 const followers = new Set()
 const onPointer = e => { const p = { x: e.clientX, y: e.clientY }; followers.forEach(f => f(p)) }
 function follow(fn) {
@@ -245,7 +245,7 @@ export default function Buddy({ mood = 'chill', level = 1, size = 96, still = fa
   const f = FRONT, b = BACK
   const cls = ['buddy', still ? '' : 'alive', 'm-' + face, interactive ? 'tappable' : '', className].filter(Boolean).join(' ')
   const props = interactive
-    ? { role: 'button', tabIndex: 0, 'aria-label': 'Iso', onClick: e => { e.stopPropagation(); poke() }, onKeyDown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); poke() } } }
+    ? { role: 'button', tabIndex: 0, 'aria-label': DEFAULT_NAME, onClick: e => { e.stopPropagation(); poke() }, onKeyDown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); poke() } } }
     : { 'aria-hidden': true, focusable: 'false' }
   return (
     <svg ref={R.svg} className={cls} viewBox="0 0 120 120" width={size} height={size} style={{ color: KIND_COLOR }} {...props}>

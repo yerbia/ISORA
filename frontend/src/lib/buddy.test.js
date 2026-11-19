@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { cleanBuddy, emptyBuddy, totalXP, levelOf, xpForLevel, gearFor, moodOf, daysBetween, fallbackLine, lineKey, LINES } from './buddy.js'
+import { cleanBuddy, emptyBuddy, totalXP, levelOf, xpForLevel, gearFor, moodOf, daysBetween, fallbackLine, lineKey, LINES, LINES_ES } from './buddy.js'
 
 describe('the buddy', () => {
-  it('keeps a valid buddy, always called Iso', () => {
-    expect(cleanBuddy({ kind: 'block', name: '  Momo ', born: '2026-10-18', level: 3 })).toEqual({ kind: 'block', name: 'Iso', born: '2026-10-18', level: 3, line: null })
-    // one buddy now: an earlier shape or name of your own becomes Iso, keeping its level
-    expect(cleanBuddy({ kind: 'drop', name: 'Remi', level: 4 })).toMatchObject({ kind: 'block', name: 'Iso', level: 4 })
-    expect(cleanBuddy({ kind: 'block' }).name).toBe('Iso')
+  it('keeps a valid buddy, always called Trino', () => {
+    expect(cleanBuddy({ kind: 'block', name: '  Momo ', born: '2026-10-18', level: 3 })).toEqual({ kind: 'block', name: 'Trino', born: '2026-10-18', level: 3, line: null })
+    // one buddy now: an earlier shape or name of your own becomes Trino, keeping its level
+    expect(cleanBuddy({ kind: 'drop', name: 'Remi', level: 4 })).toMatchObject({ kind: 'block', name: 'Trino', level: 4 })
+    expect(cleanBuddy({ kind: 'block' }).name).toBe('Trino')
     expect(cleanBuddy({ level: -2 })).toEqual(emptyBuddy())
     expect(cleanBuddy({ kind: 'block', line: { key: 'k', text: 'hi' } }).line).toEqual({ key: 'k', text: 'hi' })
   })
@@ -43,11 +43,13 @@ describe('the buddy', () => {
     expect(moodOf(base)).toBe('chill')
   })
 
-  it('counts days and keeps the same fallback line all day', () => {
+  it('counts days, has eight lines per mood and keeps a contextual fallback stable', () => {
     expect(daysBetween('2026-10-14', '2026-10-18')).toBe(4)
-    expect(fallbackLine('chill', '2026-10-18')).toBe(fallbackLine('chill', '2026-10-18'))
+    expect(Object.values(LINES).every(lines => lines.length === 8)).toBe(true)
+    expect(Object.values(LINES_ES).every(lines => lines.length === 8)).toBe(true)
+    expect(fallbackLine('chill', '2026-10-18', { action: 'rest', goal: 'fitness' })).toBe(fallbackLine('chill', '2026-10-18', { action: 'rest', goal: 'fitness' }))
     expect(LINES.chill).toContain(fallbackLine('chill', '2026-10-18'))
-    expect(LINES.chill).toContain(fallbackLine('nonsense', '2026-10-18'))
-    expect(lineKey('proud', '2026-10-18')).toBe('2026-10-18:proud')
+    expect(lineKey('proud', '2026-10-18', { action: 'finished', level: 2 })).toContain('2026-10-18:proud:finished')
+    expect(fallbackLine('chill', '2026-10-18', {}, 'es')).toMatch(/^(Día|Tómatelo|Recuperar|Un día|Deja|Descansa|Tu objetivo|Trino)/)
   })
 })

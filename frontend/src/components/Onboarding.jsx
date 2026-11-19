@@ -109,7 +109,7 @@ function OnboardingChat() {
   // --- the scripted coach -------------------------------------------------
   const askScript = () => {
     const st = SCRIPT[script.current.i]
-    // the buddy introduces itself by its own name; the rest of the script uses yours
+    // Trino introduces itself by its own name; the rest of the script uses yours
     say('coach', script.current.i === 0 ? t('Hi, I’m {0}, your ENTREN.AR buddy. What should I call you?', cleanBuddy(useStore.getState().S.buddy).name) : t(st.ask, script.current.answers.name || ''))
     setQuick(st.quick.map(q => t(q)))
   }
@@ -232,7 +232,7 @@ function OnboardingChat() {
     loadStarterPlan(pickPlan(p), gear, planShape(p))
     update(s => { s.cycling = seedCycling(s, true) })   // Variation Cycling, on from day one (lib/cycling.js)
     setApplied(true)
-    oweTours(['home', 'workout'])   // Iso shows the way round, once Home and the first workout are up
+    oweTours(['home', 'workout'])   // Trino shows the way round, once Home and the first workout are up
   }
   const continueAsGuest = () => update(s => { s.onboardingOfferLogin = false; s.onboardingDraft = null })
   const openAccount = (initialMode = 'signup') => useUI.getState().openSheet(close => <OnboardingAccountSheet close={close} initialMode={initialMode} onDone={() => update(s => { s.onboardingOfferLogin = false; s.onboardingDraft = null })} />)
@@ -254,7 +254,7 @@ function OnboardingChat() {
     } finally { setBusy(false) }
   }
 
-  // first the welcome screens (components/Welcome.jsx), then meet Iso; Iso then runs the chat as itself
+  // first the welcome screens (components/Welcome.jsx), then meet Trino; Trino then runs the chat as itself
   if (!welcomed) return <Welcome onDone={() => setWelcomed(true)} onSignIn={openSignIn} />
   if (!picked) return <div className="ob" ref={root} role="dialog" aria-label={t('Welcome to ISORA')}>
     <div className="ob-head">

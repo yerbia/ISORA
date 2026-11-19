@@ -2,7 +2,7 @@
    intro (components/Intro.jsx), views and lists that arrive in a short cascade, controls that
    give under the finger, a tab bar that bounces to the tab you pick, sheets and toasts on
    springs, and the moments worth celebrating. Motion answers what you do; the only motion
-   nobody asked for is the intro and Iso. Everything stops under reduced motion (the end). */
+   nobody asked for is the intro and Trino. Everything stops under reduced motion (the end). */
 
 :root{
   /* springs as linear() curves, each sampled at 48 points from a real damped spring, so they
@@ -37,7 +37,7 @@
   animation:in-letter calc(.7s * var(--t)) var(--spring-soft) calc((1.05s + var(--i) * .07s) * var(--t)) forwards}
 .intro-tag{font-size:16px;font-weight:500;color:var(--label-2);opacity:0;transform:translateY(8px);
   animation:in-tag calc(.6s * var(--t)) var(--spring-soft) calc(1.55s * var(--t)) forwards}
-/* the first time: Iso hops on from the side and waves */
+/* the first time: Trino hops on from the side and waves */
 .intro-iso{position:absolute;left:50%;bottom:calc(9vh + var(--sab,0px));margin-left:-48px;transform:translateX(70vw);
   animation:iso-in-x 1.05s cubic-bezier(.25,.8,.35,1) 1.6s forwards}
 .intro-iso-hop{animation:iso-in-y .35s cubic-bezier(.3,0,.7,1) 1.6s 3 alternate both}
@@ -134,7 +134,7 @@
 #toast{transform:translateX(-50%) translateY(24px) scale(.9);transition:opacity .25s ease,transform .55s var(--spring)}
 #toast.show{transform:translateX(-50%) translateY(0) scale(1)}
 
-/* ------------------------------------------------------------------ Iso -- */
+/* ------------------------------------------------------------------ Trino -- */
 .bcard .buddy{animation:iso-drop .8s var(--spring-soft) .15s both}
 @keyframes iso-drop{0%{transform:translateY(-26px) scale(.5);opacity:0}100%{transform:none;opacity:1}}
 .bcard-bubble{transform-origin:0 100%;animation:bubble-in .55s var(--spring) .45s both}

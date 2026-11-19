@@ -12,7 +12,7 @@ import { Button } from './ui.jsx'
 import Icon from './Icon.jsx'
 import { confetti } from './confetti.js'
 
-// Iso's screens (lib/buddy.js, components/Buddy.jsx): meeting it, its card on Home with the line of
+// Trino's screens (lib/buddy.js, components/Buddy.jsx): meeting it, its card on Home with the line of
 // the day, its sheet, and the level-up moment.
 
 const update = fn => useStore.getState().update(fn)
@@ -20,7 +20,7 @@ const update = fn => useStore.getState().update(fn)
 export const currentLevel = () => levelOf(totalXP(useStore.getState().S.workouts, setsDone)).level
 const setBuddy = patch => update(s => { s.buddy = { ...cleanBuddy(s.buddy), ...patch } })
 
-/** Meet Iso: Iso waves (tap to poke), then `onDone()` after "Meet Iso". */
+/** Meet Trino: Trino waves (tap to poke), then `onDone()` after "Meet Trino". */
 export function BuddyPicker({ onDone, cta }) {
   return <div className="bpick">
     <div className="bpick-stage"><Buddy mood="hyped" size={190} interactive /></div>
@@ -72,9 +72,21 @@ export function BuddyCard({ doneToday, plannedToday, todayName, facts = {} }) {
   const { S, bud, lv, mood, daysSinceLast } = useBuddyState({ doneToday, plannedToday })
   const prof = cleanProfile(S.profile)
   const today = todayISO()
-  const key = lineKey(mood, today)
+  const context = {
+    action: S.active && !S.active.editingWorkoutId ? 'active' : doneToday ? 'finished' : plannedToday ? 'planned' : mood === 'missing' ? 'returning' : mood === 'chill' ? 'rest' : mood,
+    session: todayName || '',
+    record: facts.lastRecord || '',
+    streak: facts.streak || streakWeeks(S),
+    level: lv.level,
+    goal: prof.goal || '',
+  }
+  const key = lineKey(mood, today, context)
   const [talking, setTalking] = useState(false)
-  const line = bud.line?.key === key ? bud.line.text : t(fallbackLine(mood, today), prof.name || t('friend'), todayName || t('Training'))
+  const fallback = fallbackLine(mood, today, context, getLang())
+  const line = bud.line?.key === key ? bud.line.text : fallback
+    .replace('{0}', prof.name || t('friend'))
+    .replace('{1}', todayName || t('Training'))
+    .replace('{2}', String(lv.level))
 
   // the line of the day, written for this mood by the server (api/buddy-line.js)
   useEffect(() => {
@@ -85,7 +97,8 @@ export function BuddyCard({ doneToday, plannedToday, todayName, facts = {} }) {
       body: JSON.stringify({
         buddyName: bud.name, kind: bud.kind, level: lv.level, userName: prof.name, mood, lang: getLang(),
         today: todayName || (plannedToday ? '' : 'rest day'), goal: prof.goal, weekTarget: prof.weekTarget || null,
-        streak: streakWeeks(S), hour: new Date().getHours(), daysSinceLast, ...facts,
+        action: context.action, session: context.session, record: context.record,
+        streak: context.streak, hour: new Date().getHours(), daysSinceLast, ...facts,
       }),
     }).then(r => (r.ok ? r.json() : null)).then(d => { if (d?.line) setBuddy({ line: { key, text: d.line } }) }).catch(() => {})
   }, [key, bud.kind])

@@ -10,8 +10,8 @@ import Icon from './Icon.jsx'
 import { Button } from './ui.jsx'
 import EntrenLogo from './EntrenLogo.jsx'
 
-// The welcome: four short screens the very first time ISORA opens, before Iso's setup chat.
-// Iso introduces itself, a round of Rest Blast plays by itself, a lift climbs week by week, and
+// The welcome: four short screens the very first time ISORA opens, before Trino's setup chat.
+// Trino introduces itself, a round of Rest Blast plays by itself, a lift climbs week by week, and
 // the ring closes on "Find your balance". In a phone's browser tab there is one more, before the
 // last: put ISORA on the home screen (lib/install.js), with the steps for this phone and browser.
 // Swipe or tap Next; Skip jumps straight to the chat.

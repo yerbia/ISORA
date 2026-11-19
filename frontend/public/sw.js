@@ -37,7 +37,9 @@ const isMediaPath = p => p.includes('/exercise-media/') || p.includes('/catalogu
 // The web builds take the exercise media from a CDN over the repository (vercel.json, pages.yml):
 // the one other origin this worker handles, for the media cache only.
 const MEDIA_HOST = 'cdn.jsdelivr.net'
-const cdnMedia = url => url.hostname === MEDIA_HOST && isMediaPath(url.pathname)
+// The HD pack uses /gh/.../<muscle>/<exercise>.gif, so its path does not contain /gif/ like
+// the local catalogue does. Restrict the cross-origin exception to actual media extensions.
+const cdnMedia = url => url.hostname === MEDIA_HOST && /\.(?:gif|webp|mp4)(?:$|\?)/i.test(url.pathname)
 
 // The code the app loads only when it needs it (the photo and video ingest, the QR reader...),
 // listed by the build (vite.config.js, scripts/sw-stamp.mjs). Without it the first photo added
@@ -290,7 +292,7 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET' || (url.origin !== location.origin && !cdnMedia(url))) return
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith(API)) return    // never cache auth/data
 
-  if (isMediaPath(url.pathname)) {
+  if (isMediaPath(url.pathname) || cdnMedia(url)) {
     e.respondWith(media(e))
     return
   }

@@ -2323,7 +2323,9 @@ const routes = {
   // Mobile app pairing: called from an already signed-in browser tab (Settings → "Pair the
   // mobile app") to mint a short code the phone can redeem below.
   'POST /api/pair/create': async (req, res) => {
-    const user = readSession(req);
+    // Pairing can arrive with the web app's Supabase bearer token before its legacy API cookie
+    // has been restored. Resolve both authentication forms consistently with /api/me.
+    const user = await requestUser(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
     // One live code per profile: the newest is the one on screen. Keeping every code minted
     // let one session grow this Map without limit for five minutes at a time.

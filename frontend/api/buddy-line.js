@@ -1,4 +1,4 @@
-// Your buddy's line of the day (Vercel function, POST /api/buddy-line). The app sends who the
+// Trino's line of the day (Vercel function, POST /api/buddy-line). The app sends who the
 // buddy is, who you are, its mood and a few facts about your training; the model writes one short
 // line in the buddy's voice. The app caches it per mood per day (lib/buddy.js lineKey), so this
 // runs a handful of times a day at most, and it falls back on written lines when this is down.
@@ -9,9 +9,9 @@ const ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions'
 const DEFAULT_MODELS = ['deepseek/deepseek-v4.1-flash', 'google/gemini-3.8-flash', 'qwen/qwen3.8-flash']
 const MOODS = ['active', 'proud', 'hyped', 'sleepy', 'missing', 'new', 'chill']
 
-const SYSTEM = `You are a small, warm companion character living in ISORA, a gym tracking app. You are the user's buddy: encouraging, playful, a bit cheeky, never preachy. You speak in first person as the buddy.
+const SYSTEM = `You are Trino, a small, warm companion character living in Entren.ar, a gym tracking app. You are the user's buddy: encouraging, playful, a bit cheeky, never preachy. You speak in first person as Trino.
 
-Write ONE line for the app's home screen: at most 18 words, plain text, no emoji, no hashtags, no quotes. React to your mood and the facts given, mention something concrete when there is something (today's session, a record, the streak, days away), and address the user by name when you have it. No medical, diet or weight advice. Write in the language given.`
+Write ONE line for the app's home screen: at most 18 words, plain text, no emoji, no hashtags, no quotes. React to the action and mood, and use concrete facts when present: the session, a record, the streak, the level, the goal or days away. Address the user by name when you have it. No medical, diet or weight advice. Write in the language given.`
 
 const str = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '')
 const int = v => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : null)
@@ -25,11 +25,14 @@ export default async function handler(req, res) {
   const b = req.body || {}
   const mood = MOODS.includes(b.mood) ? b.mood : 'chill'
   const facts = {
-    buddy: `${str(b.buddyName, 20) || 'Iso'}, a little square blue block creature, level ${int(b.level) ?? 1}`,
+    buddy: `${str(b.buddyName, 20) || 'Trino'}, a little square blue block creature, level ${int(b.level) ?? 1}`,
     user: str(b.userName, 40) || null,
     mood,
     language: str(b.lang, 10) || 'en',
     today: str(b.today, 80) || null,
+    action: str(b.action, 30) || null,
+    session: str(b.session, 80) || null,
+    record: str(b.record, 80) || null,
     goal: str(b.goal, 20) || null,
     weekDone: int(b.weekDone), weekTarget: int(b.weekTarget),
     streakWeeks: int(b.streak), daysSinceLast: int(b.daysSinceLast),

@@ -328,6 +328,8 @@ export const useStore = create((set, get) => {
   let adopting = null      // the adoptProfile in flight
   let rejoined = false     // the account signing in is the one this copy already belongs to (setUser)
   let pairedBase = null    // mobile build: the address of the paired server, while there is one
+  let remoteSession = null // mobile build: persisted remote auth, used for in-session renewal
+  let remoteSessionChecked = 0
   let fpOf = null          // the copy the stored fingerprint was last taken of (confirmed)
   let keeping = null       // phone: the file write of what keepForPrevious set aside, until it lands
   let mirrorQ = Promise.resolve()   // phone: the file mirror's writes, one after the other (saveMirror)
@@ -642,8 +644,20 @@ export const useStore = create((set, get) => {
     if (adoptHold) { if (!adopting && adoptOwed()) get().resumeAdoption(); return }
     if (pulling) return pulling
     const { base } = metaOf()
-    if (!base || owes()) return get().pullState()
     try {
+      // Boot renews a paired token, but an Android app can remain open longer than its lifetime.
+      // Refresh periodically while it is still valid; a 401 remains a real revocation and is shown
+      // as "Pair again" without discarding the phone's local data.
+      if (MOBILE && remoteSession && Date.now() - remoteSessionChecked >= 6 * 60 * 60 * 1000) {
+        const me = await api('/api/me')
+        if (!me.user?.id) throw Object.assign(new Error('no user'), { status: 200, code: 'bad-response' })
+        if (typeof me.token === 'string' && me.token) {
+          await renewToken(remoteSession, me.token)
+          remoteSession = { ...remoteSession, token: me.token }
+        }
+        remoteSessionChecked = Date.now()
+      }
+      if (!base || owes()) return get().pullState()
       const { rev, wid } = await api('/api/data/rev')
       if (rev !== base.rev || (base.wid && wid && wid !== base.wid)) return get().pullState()
       confirmed(get().S)   // nothing moved on either side
@@ -1811,6 +1825,8 @@ export const useStore = create((set, get) => {
       const user = await connect(url, code)   // throws on a bad URL/expired code — caller shows it
       // The account first, the address after: a copy another account still owed is kept aside
       // for it under the server it belongs to, not the one being paired.
+      remoteSession = await loadRemote()
+      remoteSessionChecked = Date.now()
       get().setUser(user, { adopt: true })
       if (keeping) { await keeping; keeping = null }
       pairedBase = normalizeServerUrl(url)
@@ -1827,6 +1843,8 @@ export const useStore = create((set, get) => {
       const r = await get().signOut(opts)
       if (r.owed && !r.stashed) return r
       await forgetRemote()
+      remoteSession = null
+      remoteSessionChecked = 0
       pairedBase = null
       setSync({ server: null })
       get().setGuest(true)
@@ -1874,6 +1892,8 @@ export const useStore = create((set, get) => {
         await loadCfAccess({ pairedBase: remote?.mode === 'remote' ? remote.base : '' })
         set({ coachLocal: coachDeviceSettings(await loadCoachDevice()) })
         if (remote?.mode === 'remote') {
+          remoteSession = remote
+          remoteSessionChecked = Date.now()
           setRemoteAuth(remote.base, remote.token)
           pairedBase = remote.base || null
           setSync({ server: pairedBase })
@@ -1883,7 +1903,10 @@ export const useStore = create((set, get) => {
             if (!me.user?.id) throw Object.assign(new Error('no user'), { status: 200, code: 'bad-response' })
             // A token past half its life comes back renewed: kept, it never runs out on a phone
             // that is used at all.
-            if (typeof me.token === 'string' && me.token) await renewToken(remote, me.token)
+            if (typeof me.token === 'string' && me.token) {
+              await renewToken(remoteSession, me.token)
+              remoteSession = { ...remoteSession, token: me.token }
+            }
             get().setUser(me.user)
             // The paired server's /api/config, the same one the web boot reads: without it the
             // phone never learned whether the server offers the Coach and told everyone "your

@@ -33,7 +33,7 @@ import Elapsed from '../components/Elapsed.jsx'
 import Buddy from '../components/Buddy.jsx'
 import { useOwedTour } from '../components/Tour.jsx'
 import { cyclingLine } from '../components/CyclingSheet.jsx'
-// Iso, once met, is the one who explains the progression line (components/Buddy.jsx)
+// Trino, once met, is the one who explains the progression line (components/Buddy.jsx)
 const isoMet = () => !!useStore.getState().S.buddy?.kind
 import Icon from '../components/Icon.jsx'
 import { Button, Check, NumberField } from '../components/ui.jsx'
@@ -953,7 +953,7 @@ function ActiveWorkout() {
   const requestedView = A.workoutView || S.workoutView
   const workoutView = ['list', 'compact', 'focus'].includes(requestedView) ? requestedView : 'cards'
   const listMode = workoutView === 'list' || workoutView === 'compact'
-  // Iso's guide to the screen, the first time a session is open (components/Tour.jsx)
+  // Trino's guide to the screen, the first time a session is open (components/Tour.jsx)
   useOwedTour('workout', !!S.active && !S.active.editingWorkoutId, 1200)
   const focusMode = workoutView === 'focus'
   const dense = workoutView === 'compact'

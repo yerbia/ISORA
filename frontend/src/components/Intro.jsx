@@ -7,7 +7,7 @@ import Buddy from './Buddy.jsx'
 // The app intro, once each time ISORA is opened (not on every tab switch or reload of a sheet):
 // the speech bubble pops up, the three blocks of the I drop into it like Rest Blast pieces, the
 // name rises, and the app zooms in through the bubble. The very first time, before you have met
-// Iso, it is longer: Iso hops on and waves. A tap skips it; under reduced motion there is none.
+// Trino, it is longer: Trino hops on and waves. A tap skips it; under reduced motion there is none.
 
 const SEEN = 'isora_intro'
 const FULL_MS = 3300, SHORT_MS = 1750

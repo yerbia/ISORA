@@ -24,7 +24,7 @@ describe('the welcome', () => {
   it('walks four screens with Next or a swipe, and ends on Let’s go', () => {
     const onDone = vi.fn()
     act(() => root.render(<Welcome onDone={onDone} />))
-    expect(text()).toContain('Hi, I’m Iso.')
+    expect(text()).toContain('Hola, soy Trino.')
     expect(host.querySelectorAll('.wel-dots i')).toHaveLength(4)
     expect(host.querySelector('.wel-dots i.on')).toBe(host.querySelectorAll('.wel-dots i')[0])
 

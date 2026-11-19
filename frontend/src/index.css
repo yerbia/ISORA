@@ -412,6 +412,10 @@ h4.sec{
   color:var(--label-3);font-size:10px;font-weight:500;letter-spacing:.005em;padding-top:3px;
   transition:color var(--fast);
 }
+/* The four navigation tabs are bottom-aligned as a group, so this extra top padding makes
+   their icon/label stack sit a few pixels low inside the dock. Keep the raised start button's
+   geometry unchanged and center only the ordinary tabs within their available height. */
+#tabbar button:not(.start){padding-top:0}
 /* The inactive tint is semi-transparent, so wherever two strokes cross inside an
    icon (the calendar's hangers over its frame, the divider's caps on its sides)
    the alpha doubled up and the icon read as a stack of loose layers. Carrying the

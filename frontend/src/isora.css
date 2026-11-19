@@ -370,7 +370,7 @@ body.ob-open{position:fixed;inset-inline:0;width:100%;overflow:hidden}
 .buddy.alive{will-change:transform;transform:translateZ(0)}
 .buddy.tappable{cursor:pointer;outline:none}
 .buddy.tappable:focus-visible{filter:drop-shadow(0 0 0 2px var(--acc))}
-/* Iso's body moves by simulation (lib/iso-motion.js); CSS keeps only its little effects */
+/* Trino's body moves by simulation (lib/iso-motion.js); CSS keeps only its little effects */
 .buddy.alive .bd-z{animation:bd-z 2.6s ease-in-out infinite}
 .buddy.alive .bd-sweat{animation:bd-sweat 1.8s ease-in infinite}
 .buddy.alive .bd-spark{animation:bd-spark 1.9s ease-in-out infinite}
@@ -466,7 +466,7 @@ body.ob-open{position:fixed;inset-inline:0;width:100%;overflow:hidden}
 
 
 /* --------------------------------------------------------------- Rest Blast -- */
-/* The board is a dark well; the blocks are small glossy toys like Iso's body, lit from the top
+/* The board is a dark well; the blocks are small glossy toys like Trino's body, lit from the top
    left in six saturated colours of their own (not the UI's semantic ones). A lifted piece's best
    spot pulses in its colour; the landing preview is the piece, translucent. */
 #rest-game{background:var(--bg);gap:0;padding-top:calc(8px + var(--sat))}
@@ -529,7 +529,7 @@ body.ob-open{position:fixed;inset-inline:0;width:100%;overflow:hidden}
 .rb-pop{font-family:var(--display);font-stretch:110%;font-size:28px;font-weight:800;text-shadow:0 2px 14px rgba(0,0,0,.7)}
 .rb-pop.perfect{color:#ffd23f;font-size:32px}
 
-/* time's up: the board goes dark in a wave from the top left, Iso and the way out on top */
+/* time's up: the board goes dark in a wave from the top left, Trino and the way out on top */
 .over-time .rb-cell{animation:rb-doom .6s ease-out var(--d,0ms) both}
 @keyframes rb-doom{to{filter:saturate(.2) brightness(.55);transform:scale(.92)}}
 .rb-over{border-radius:22px;gap:8px;background:color-mix(in srgb,var(--bg) 60%,transparent);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
@@ -553,7 +553,7 @@ body.ob-open{position:fixed;inset-inline:0;width:100%;overflow:hidden}
 .rb-ghost .rb-piece.rb-can{transform:scale(1.04)}
 @keyframes rb-lift{from{transform:scale(.55);opacity:.6}to{transform:scale(1);opacity:1}}
 
-/* tucked away: a handle on the rest bar's top edge, with Iso and the score */
+/* tucked away: a handle on the rest bar's top edge, with Trino and the score */
 .rb-reopen{inset-inline-end:auto;left:50%;transform:translateX(-50%);z-index:61;
   background:var(--rest);color:#fff;display:inline-flex;align-items:center;gap:8px;padding:6px 14px 6px 8px;font-size:14px;border-radius:99px;
   box-shadow:0 -4px 18px -6px rgba(0,0,0,.5),0 0 0 3px var(--bg)}
@@ -643,7 +643,7 @@ body.ob-open{position:fixed;inset-inline:0;width:100%;overflow:hidden}
 .plan-sum{color:var(--label-2);font-weight:500}
 .progline .progline-iso{flex:none;margin:-6px 2px -6px -4px}
 
-/* ------------------------------------------------------------------ Iso's guide -- */
+/* ------------------------------------------------------------------ Trino's guide -- */
 .tour{position:fixed;inset:0;z-index:300}
 .tour:not(.has-spot){background:rgba(0,0,0,.62)}
 .tour-spot{position:fixed;border-radius:22px;box-shadow:0 0 0 200vmax rgba(0,0,0,.62),0 0 0 2px color-mix(in srgb,var(--acc) 70%,transparent),0 0 30px color-mix(in srgb,var(--acc) 35%,transparent);pointer-events:none;
@@ -701,7 +701,7 @@ body.ob-open{position:fixed;inset-inline:0;width:100%;overflow:hidden}
 .inst-pill b{color:var(--acc);font-weight:700}
 @media (prefers-reduced-motion:reduce){ .inst{animation:none} }
 
-/* ---- the welcome (components/Welcome.jsx): four screens before Iso's setup chat ---- */
+/* ---- the welcome (components/Welcome.jsx): four screens before Trino's setup chat ---- */
 .wel{position:fixed;inset:0;z-index:96;background:var(--bg);display:flex;flex-direction:column;padding:var(--sat) 0 calc(var(--sab,0px) + 16px);overflow:hidden;touch-action:pan-y;user-select:none;-webkit-user-select:none}
 .wel.replay{z-index:350}
 .wel-top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 0}
@@ -727,7 +727,7 @@ body.ob-open{position:fixed;inset-inline:0;width:100%;overflow:hidden}
 .wel-dots i.done{background:color-mix(in srgb,var(--acc) 50%,transparent)}
 .wel-next.btn{width:100%;max-width:360px;border-radius:99px;padding:15px;font-size:17px}
 
-/* meet: Iso on a soft halo */
+/* meet: Trino on a soft halo */
 .wel-meet{position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:100%}
 .wel-halo{position:absolute;width:230px;height:230px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--acc) 30%,transparent),transparent 68%);animation:wel-halo 3.6s ease-in-out infinite}
 .wel-halo.h2{width:320px;height:320px;opacity:.5;animation-delay:-1.8s}

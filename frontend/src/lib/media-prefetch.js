@@ -30,7 +30,11 @@ const CONCURRENCY = 2
 // that is down) is not asked for the rest until the next run.
 const MAX_FAILURES = 3
 
-/** Every same-origin img/gif URL for the exercises in the plan and the active session. */
+// The HD exercise pack is the one cross-origin media source the service worker explicitly
+// supports (public/sw.js); arbitrary VITE_* CDNs still stay out of the prefetcher.
+const HD_MEDIA_ORIGIN = 'https://cdn.jsdelivr.net'
+
+/** Every cacheable img/gif URL for the exercises in the plan and the active session. */
 export function planMediaUrls(S, base = globalThis.location?.href, index = EXIDX) {
   if (!base) return []
   const ids = new Set()
@@ -46,9 +50,7 @@ export function planMediaUrls(S, base = globalThis.location?.href, index = EXIDX
     for (const src of [ex.gif && gifSrc(ex, figureOf(S)), ex.img && imgSrc(ex, figureOf(S))]) {
       if (!src) continue
       const u = new URL(src, base)
-      // Media on another origin (a build that points at a CDN) never passes through this
-      // worker, so fetching it here would only warm the browser's HTTP cache.
-      if (u.origin === origin) urls.add(u.href)
+      if (u.origin === origin || u.origin === HD_MEDIA_ORIGIN) urls.add(u.href)
     }
   }
   return [...urls]
