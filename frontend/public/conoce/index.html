@@ -35,5 +35,24 @@
     <section id="descargas" class="section"><div class="wrap"><div class="eyebrow">Descargas</div><h2>Lleva Entren.ar contigo.</h2><p class="section-intro">La aplicación web sigue disponible desde el navegador. Las versiones nativas se publicarán aquí cuando sus canales de distribución estén listos.</p><div class="download"><article class="card"><div><h3>Android</h3><p>Versión nativa para teléfonos Android. El enlace de descarga se habilitará con la primera publicación firmada.</p></div><span class="status">Próximamente</span></article><article class="card"><div><h3>iPhone</h3><p>Versión nativa para iPhone, preparada desde el proyecto iOS del repositorio. Publicaremos App Store o TestFlight cuando esté disponible.</p></div><span class="status">Próximamente</span></article></div></div></section>
   </main>
   <footer class="wrap footer"><span>© Entren.ar</span><span><a href="/#/inicio">Entrar en la aplicación</a> · Página de preview privada</span></footer>
+  <script>
+    const androidCard = document.querySelector('#descargas .download .card')
+    if (androidCard) {
+      const copy = androidCard.querySelector('p')
+      if (copy) copy.textContent = 'APK de pruebas internas para telÃ©fonos Android. DescÃ¡rgalo e instÃ¡lalo manualmente; no estÃ¡ publicado en Google Play.'
+      const status = androidCard.querySelector('.status')
+      if (status) {
+        status.textContent = 'Disponible para pruebas'
+        const link = document.createElement('a')
+        link.className = 'button'
+        link.href = '/app-debug.apk'
+        link.download = 'app-debug.apk'
+        link.textContent = 'Descargar APK para Android'
+        status.parentNode.insertBefore(link, status)
+        status.style.display = 'block'
+        status.style.marginTop = '12px'
+      }
+    }
+  </script>
 </body>
 </html>
