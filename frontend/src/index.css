@@ -412,10 +412,10 @@ h4.sec{
   color:var(--label-3);font-size:10px;font-weight:500;letter-spacing:.005em;padding-top:3px;
   transition:color var(--fast);
 }
-/* The four navigation tabs are bottom-aligned as a group, so this extra top padding makes
-   their icon/label stack sit a few pixels low inside the dock. Keep the raised start button's
-   geometry unchanged and center only the ordinary tabs within their available height. */
-#tabbar button:not(.start){padding-top:0}
+/* The four navigation tabs must use the dock's full inner height: an intrinsic-height button
+   remains bottom-aligned when #tabbar uses flex-end, even after its padding is removed. Stretching
+   only these buttons and centering their column keeps the raised start button's geometry intact. */
+#tabbar button:not(.start){align-self:stretch;justify-content:center;padding-block:0}
 /* The inactive tint is semi-transparent, so wherever two strokes cross inside an
    icon (the calendar's hangers over its frame, the divider's caps on its sides)
    the alpha doubled up and the icon read as a stack of loose layers. Carrying the
@@ -2146,7 +2146,6 @@ button.wl-summary{width:100%;padding:0 0 10px;text-align:start;border-radius:var
 [dir="rtl"] .hm-wrap,[dir="rtl"] .cal-grid{direction:ltr}
 /* Tight tracking is tuned for Latin; Arabic is a connected script and gets none. */
 [dir="rtl"] *{letter-spacing:0}
-.exfix-link{display:inline-flex;align-items:center;gap:5px;margin:14px 0 4px;color:var(--label-3);text-decoration:none}
 .list .similar-label{margin:16px 2px 6px;grid-column:1/-1}
 
 /* Rest Blast (components/RestGame.jsx): the block puzzle over the page during a rest. Above the

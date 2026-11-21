@@ -139,6 +139,10 @@ export function decrypt(blob) {
 /* ---------- load / save ---------- */
 
 let cache = null;
+let durableSaver = null;
+export function setDurableSaver(fn) {
+  durableSaver = typeof fn === 'function' ? fn : null;
+}
 function atomicWrite(file, content, mode) {
   const tmp = file + '.tmp';
   fs.writeFileSync(tmp, content, mode ? { mode } : undefined);
@@ -178,6 +182,11 @@ export function save(patch) {
   const next = { ...load(), ...patch };
   cache = next;
   atomicWrite(FILE, JSON.stringify(next, null, 2), 0o600);
+  // In serverless deployments this local write is only a warm-instance cache. The persistence
+  // adapter mirrors the whole config (including daily counts and the outcome log) remotely.
+  try { durableSaver?.(next)?.catch?.(e => console.error('Coach durable save', e.message || e)); } catch (e) {
+    console.error('Coach durable save', e.message || e);
+  }
   return next;
 }
 // Replace the local snapshot with the durable instance snapshot. The local file remains a

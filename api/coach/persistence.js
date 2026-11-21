@@ -10,6 +10,7 @@ export function createCoachPersistence({ url, serviceRoleKey, log = console } = 
   if (!url || !serviceRoleKey) return null;
   const client = createClient(url, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
   let warned = false;
+  let pending = Promise.resolve();
   const report = error => {
     if (!warned) {
       warned = true;
@@ -17,20 +18,8 @@ export function createCoachPersistence({ url, serviceRoleKey, log = console } = 
     }
   };
 
-  return {
-    enabled: true,
-    async load() {
-      try {
-        const { data, error } = await client.from('coach_config').select('config').eq('id', 'default').maybeSingle();
-        if (error) throw error;
-        if (data?.config && typeof data.config === 'object') cfgStore.replace(data.config);
-        return true;
-      } catch (error) {
-        report(error);
-        return false;
-      }
-    },
-    async save(config = cfgStore.load()) {
+  const persist = (config = cfgStore.load()) => {
+    pending = pending.then(async () => {
       try {
         const { error } = await client.from('coach_config').upsert({ id: 'default', config, updated_at: new Date().toISOString() });
         if (error) throw error;
@@ -40,6 +29,25 @@ export function createCoachPersistence({ url, serviceRoleKey, log = console } = 
         report(error);
         return false;
       }
-    }
+    });
+    return pending;
   };
+  const api = {
+    enabled: true,
+    bind() { cfgStore.setDurableSaver(persist); },
+    async load() {
+      try {
+        await pending;
+        const { data, error } = await client.from('coach_config').select('config').eq('id', 'default').maybeSingle();
+        if (error) throw error;
+        if (data?.config && typeof data.config === 'object') cfgStore.replace(data.config);
+        return true;
+      } catch (error) {
+        report(error);
+        return false;
+      }
+    },
+    save: persist
+  };
+  return api;
 }

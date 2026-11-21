@@ -2140,7 +2140,6 @@ export default {
   'combat': 'küzdősport',
   'rehab': 'rehabilitáció',
   'Any type': 'Bármilyen típus',
-  'Suggest a fix for this exercise': 'Javítás javaslata ehhez a gyakorlathoz',
   'Back-off sets': 'Csökkenő sorozatok',
   'Each set one step lighter than the one before. The weight above is the first set.': 'Minden sorozat egy lépéssel könnyebb az előzőnél. A fenti súly az első sorozaté.',
   'Sets open at {0}. The first set goes up when every set reaches its reps, and the rest follow it.': 'A sorozatok kezdősúlya: {0}. Az első sorozat akkor nő, ha minden sorozat eléri az ismétlésszámát, és a többi követi.',

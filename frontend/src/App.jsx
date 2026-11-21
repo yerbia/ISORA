@@ -33,7 +33,6 @@ import Intro from './components/Intro.jsx'
 import { WelcomeHost } from './components/Welcome.jsx'
 import TourHost from './components/Tour.jsx'
 import TimerFlash from './components/TimerFlash.jsx'
-import { openDeviceLinkRedeem } from './components/Passkeys.jsx'
 import Login from './views/Login.jsx'
 const MobileOnboarding = lazy(() => import('./views/MobileOnboarding.jsx'))
 import Home from './views/Home.jsx'
@@ -185,9 +184,9 @@ function Shell() {
   const linkCode = useStore(s => s.linkCode)
   const linkOffered = useRef(false)
   useEffect(() => {
-    if (!ready || !linkCode || linkOffered.current) return
+    if (MOBILE || !ready || !linkCode || linkOffered.current) return
     linkOffered.current = true
-    openDeviceLinkRedeem()
+    import('./components/Passkeys.jsx').then(({ openDeviceLinkRedeem }) => openDeviceLinkRedeem()).catch(() => {})
   }, [ready, linkCode])
   useEffect(() => {
     const onScroll = () => {

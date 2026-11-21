@@ -2211,7 +2211,6 @@ export default {
   'combat': 'কমব্যাট',
   'rehab': 'রিহ্যাব',
   'Any type': 'যেকোনো ধরন',
-  'Suggest a fix for this exercise': 'এই ব্যায়ামের জন্য সংশোধনের পরামর্শ দিন',
 
   // v1.4.0 additions
   'Cloudflare Access': 'Cloudflare Access',

@@ -18,7 +18,11 @@ export const vault = () => (IS_APPLE ? t('iCloud Keychain') : IS_ANDROID ? t('Go
 // navigator.credentials: some browsers expose WebAuthn while that generic Credential Management
 // API check produces a false negative (notably Chrome on iOS). The real create/get calls still run
 // only after the user chooses a passkey action and surface any genuine browser error there.
-export const webauthnOK = () => typeof window.PublicKeyCredential !== 'undefined'
+// The Android shell never authenticates with WebAuthn. Its Capacitor origin cannot satisfy the
+// server's RP_ID, and the supported mobile path is the one-time pairing code redeemed from the
+// already authenticated web app. Keeping this guard here makes accidental future UI exposure
+// fail closed even if a passkey component is imported by a shared route.
+export const webauthnOK = () => !MOBILE && typeof window.PublicKeyCredential !== 'undefined'
 
 // The paired mobile app (lib/remote.js) is the only caller of these — everywhere else stays on
 // same-origin cookies, so remoteBase/remoteToken stay empty and api() behaves exactly as before.
@@ -436,6 +440,7 @@ export function passkeyError(e, fallback) {
   return e?.message || fallback
 }
 export async function passkeyRegister(name, code) {
+  if (MOBILE) throw failure(t('Passkey sign-in is not available in the Android app.'), 'mobile-passkey')
   const { cid, options } = await api('/api/register/options', { method: 'POST', body: JSON.stringify({ name, code: code || '' }) })
   const cred = await navigator.credentials.create({ publicKey: toCreationOptions(options) })
   const res = await api('/api/register/verify', { method: 'POST', body: JSON.stringify({ cid, credential: credToJSON(cred) }) })
@@ -446,6 +451,7 @@ export async function passkeyRegister(name, code) {
 // prompt off — a sheet that asked for it and was closed meanwhile (components/PasswordAuth.jsx,
 // ProveOwner) — which then rejects with an AbortError.
 export async function passkeyAssertion({ signal } = {}) {
+  if (MOBILE) throw failure(t('Passkey sign-in is not available in the Android app.'), 'mobile-passkey')
   const { cid, options } = await api('/api/login/options', { method: 'POST', body: '{}' })
   const cred = await navigator.credentials.get({ publicKey: toRequestOptions(options), ...(signal ? { signal } : {}) })
   return { cid, credential: credToJSON(cred) }
@@ -460,6 +466,7 @@ export async function passkeyLogin() {
 // They are copied first — the conversion writes buffers into them, and a prompt dismissed by
 // mistake is tried again with the same ones.
 export async function createPasskey(options) {
+  if (MOBILE) throw failure(t('Passkeys are not available in the Android app.'), 'mobile-passkey')
   const cred = await navigator.credentials.create({ publicKey: toCreationOptions(JSON.parse(JSON.stringify(options))) })
   return credToJSON(cred)
 }

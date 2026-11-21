@@ -1,4 +1,4 @@
-package ch.duartesantos.opengym;
+package ar.entren.app;
 
 import android.app.Activity;
 import android.content.ContentResolver;

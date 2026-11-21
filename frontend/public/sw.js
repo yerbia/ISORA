@@ -244,9 +244,9 @@ self.addEventListener('push', e => {
     // One alert per kind: a new rest-timer push replaces the last one instead of stacking
     // up in the tray (issue #172). `tag` alone should do that, but iOS keeps every one, so
     // the previous notification with the same tag is closed by hand first.
-    const tag = data.tag || 'opengym'
+    const tag = data.tag || 'entrenar'
     try { for (const n of await self.registration.getNotifications({ tag })) n.close() } catch {}
-    await self.registration.showNotification(data.title || 'openGym', {
+    await self.registration.showNotification(data.title || 'Entren.ar', {
       body: data.body || '',
       icon: 'icon-512.png',
       badge: 'icon-180.png',

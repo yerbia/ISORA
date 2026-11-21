@@ -51,6 +51,7 @@ const SUPABASE_SERVICE_ROLE_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY |
 // The service key is server-only and is used solely for the encrypted, instance-wide Coach
 // configuration. Without it, the API keeps the existing local-file fallback.
 const coachPersistence = createCoachPersistence({ url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY });
+coachPersistence?.bind?.();
 const adminPersistence = createAdminPersistence({ url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY });
 const mediaPersistence = createMediaPersistence({ url: SUPABASE_URL, serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY });
 // Once a deployment opts into Supabase, a remote read/write failure must not silently fall back
@@ -363,9 +364,11 @@ function pushEndpointError(raw) {
 async function sendPush(userId, payload, deviceId) {
   let subs = db.subs.filter(s => s.userId === userId);
   if (deviceId) subs = subs.filter(s => !s.deviceId || s.deviceId === deviceId);
-  if (!subs.length) return;
+  if (!subs.length) return { delivered: 0, permanent: true };
   const body = JSON.stringify(payload);
   let dirty = false;
+  let delivered = 0;
+  let permanentFailures = 0;
   let next = 0;
   const worker = async () => {
     while (next < subs.length) {
@@ -386,13 +389,17 @@ async function sendPush(userId, payload, deviceId) {
       try {
         await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, body,
           { urgency: 'high', timeout: PUSH_TIMEOUT_MS, agent: PUSH_AGENT });
+        delivered++;
       } catch (e) {
         console.error('push send failed', userId, e.statusCode, e.body || e.message);
         // 404/410: the push service says the subscription is gone. 403: it refuses our VAPID
         // signature — a subscription made against a key this instance no longer has (data/vapid.json
         // regenerated). Neither will ever deliver again; keeping them only hides the fact from the
         // Settings toggle, which reads the browser's side. The client re-subscribes on its next boot.
-        if (e.statusCode === 404 || e.statusCode === 410 || e.statusCode === 403) {
+        const permanent = e.statusCode === 404 || e.statusCode === 410 || e.statusCode === 403 ||
+          /p256dh|auth|subscription/i.test(String(e.message || e.body || ''));
+        if (permanent) {
+          permanentFailures++;
           db.subs = db.subs.filter(s => s.endpoint !== sub.endpoint); dirty = true;
         }
       }
@@ -406,6 +413,7 @@ async function sendPush(userId, payload, deviceId) {
   // memory, so only the copy on disk lags: the next saveDb() that succeeds, from any route,
   // writes it out, and a restart re-reads the old file and prunes it again on the next send.
   if (dirty) { try { saveDb(); } catch (e) { console.error('push: could not save db.json', e.message); } }
+  return { delivered, permanent: permanentFailures === subs.length };
 }
 
 // Rest-timer alerts: client schedules on start/extend, cancels on skip or on-screen completion —
@@ -482,6 +490,8 @@ const STATE_CACHE_MAX = 64;
 // it, as they do REMINDER_TICK_MS.
 const STATE_CACHE_TTL_MS = Math.max(50, +(process.env.STATE_CACHE_TTL_MS || 600000) || 600000);
 const stateCache = new Map(); // uid -> { mtimeMs, size, hitAt, S }
+const reminderInFlight = new Set();
+const nudgeInFlight = new Set();
 function readStateCached(uid) {
   let st;
   try { st = fs.statSync(stateFile(uid)); } catch { stateCache.delete(uid); return null; }
@@ -505,16 +515,17 @@ function readStateCached(uid) {
 // restart inside the evening still sends it. Once per local date (`user.lastNudge`), never while
 // a workout is on screen, and nudgeFor() decides the day and the back-off.
 function nudgeTick(user, S, now) {
-  if (!S.reminder.nudge || user.lastNudge === now.date) return;
+  if (!S.reminder.nudge || user.lastNudge === now.date || nudgeInFlight.has(user.id)) return;
   if (!nudgeWindowOpen(S.reminder.time, now.hhmm)) return;
   if (livePresence(user.id)) return; // a session is under way — today's workout in the making
   const rid = nudgeFor(S, now.date);
   if (!rid) return;
   const routine = (S.routines || []).find(r => r?.id === rid);
   console.log('nudge firing', user.id, rid);
-  user.lastNudge = now.date;
-  saveDb();
-  sendPush(user.id, nudgePush(S.lang, toneOf(S.reminder), routine, now.date));
+  nudgeInFlight.add(user.id);
+  sendPush(user.id, nudgePush(S.lang, toneOf(S.reminder), routine, now.date)).then(result => {
+    if (result.delivered || result.permanent) { user.lastNudge = now.date; saveDb(); }
+  }).catch(e => console.error('nudge push', user.id, e)).finally(() => nudgeInFlight.delete(user.id));
 }
 setInterval(() => {
   for (const user of db.users) {
@@ -530,16 +541,17 @@ setInterval(() => {
       nudgeTick(user, S, now);
       const late = minutesLate(S.reminder.time, now);
       if (!(late >= 0 && late <= REMINDER_WINDOW_MIN)) continue;
-      if (user.lastReminder === now.date) continue;
+      if (user.lastReminder === now.date || reminderInFlight.has(user.id)) continue;
       if ((S.workouts || []).some(w => w?.d === now.date)) continue;
       if (excusedOn(S, now.date)) continue; // noted as sick, away, … (nudge.js excusedOn)
       const rid = effectiveRoutineId(S, now.date);
       if (!rid) continue; // rest day — nothing planned
       const routine = (S.routines || []).find(r => r?.id === rid);
       console.log('reminder firing', user.id, rid);
-      user.lastReminder = now.date;
-      saveDb();
-      sendPush(user.id, dayReminderPush(S.lang, routine));
+      reminderInFlight.add(user.id);
+      sendPush(user.id, dayReminderPush(S.lang, routine)).then(result => {
+        if (result.delivered || result.permanent) { user.lastReminder = now.date; saveDb(); }
+      }).catch(e => console.error('reminder push', user.id, e)).finally(() => reminderInFlight.delete(user.id));
     } catch (e) {
       console.error('reminder tick', user.id, e);
     }
@@ -2602,7 +2614,9 @@ const routes = {
   // except with reason `hidden`, which marks it away (see PRESENCE_HIDDEN_GRACE). `navigated`,
   // `closed`, and no reason at all (older clients), drop it at once.
   'POST /api/activity': async (req, res) => {
-    const user = readSession(req);
+    // The workout page sends the Supabase bearer token in current web builds. The legacy cookie
+    // is still accepted by requestUser, but readSession alone made every modern heartbeat 401.
+    const user = await requestUser(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
     const body = await readBody(req);
     if (body.active) {

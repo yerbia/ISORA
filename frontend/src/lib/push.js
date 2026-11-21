@@ -81,7 +81,7 @@ export function bookRestPush(endsAt) {
   const seconds = Math.max(1, Math.round((endsAt - Date.now()) / 1000))
   tellWorker({ type: 'isora-rest', endsAt })
   fetch('/api/rest-push', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ subscription: sub, seconds, endsAt, title: 'ISORA', body: t('Rest’s over. Next set!') }) })
+    body: JSON.stringify({ subscription: sub, seconds, endsAt, title: 'Entren.ar', body: t('Rest’s over. Next set!') }) })
     .then(r => { if (r.status === 410) keepSub(null) }).catch(() => {})
 }
 /** The rest was skipped or ended by hand: the push that is already on its way shows nothing. */
@@ -162,6 +162,6 @@ export const sendTestPush = async () => {
   const sub = savedSub()
   if (!sub) throw new Error(t('Notifications off'))
   const r = await fetch('/api/rest-push', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ subscription: sub, seconds: 3, title: 'ISORA', body: t('Test sent! Should pop up any second') }) })
+    body: JSON.stringify({ subscription: sub, seconds: 3, title: 'Entren.ar', body: t('Test sent! Should pop up any second') }) })
   if (!r.ok) throw new Error(r.status === 503 ? t('Lock-screen alerts aren’t set up on this server yet.') : t('Test failed'))
 }

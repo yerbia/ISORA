@@ -2192,7 +2192,6 @@ export default {
   'combat': 'فنون قتالية',
   'rehab': 'تأهيل',
   'Any type': 'أي نوع',
-  'Suggest a fix for this exercise': 'اقترح تصحيحًا لهذا التمرين',
   'Back-off sets': 'مجموعات تنازلية',
   'Each set one step lighter than the one before. The weight above is the first set.': 'كل مجموعة أخف بخطوة واحدة من التي قبلها. الوزن أعلاه هو المجموعة الأولى.',
   'Sets open at {0}. The first set goes up when every set reaches its reps, and the rest follow it.': 'تبدأ المجموعات عند {0}. يرتفع وزن المجموعة الأولى عندما تبلغ كل مجموعة تكراراتها، وتتبعها البقية.',

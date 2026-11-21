@@ -10,6 +10,14 @@ const COPY = {
     dayRoutineSuffix: 'today',
     dayBody: "It's on your plan. Let's go 💪",
   },
+  es: {
+    restTitle: 'Descanso terminado 💪',
+    restBody: 'Hora de la próxima serie.',
+    testBody: 'Notificación de prueba ✅ Así son las alertas de Entren.ar.',
+    dayFallbackTitle: 'Entrenamiento planificado para hoy',
+    dayRoutineSuffix: 'hoy',
+    dayBody: 'Está en tu plan. ¡A entrenar! 💪',
+  },
   'pt-BR': {
     restTitle: 'Descanso terminado 💪',
     restBody: 'Hora da próxima série.',
@@ -28,14 +36,14 @@ export function restTimerPush(lang) {
 }
 
 export function testPush(lang) {
-  return { title: 'openGym', body: copyFor(lang).testBody, tag: 'test' };
+  return { title: 'Entren.ar', body: copyFor(lang).testBody, tag: 'test' };
 }
 
 export function dayReminderPush(lang, routine) {
   const copy = copyFor(lang);
   return {
     title: routine
-      ? `${routine.emoji || '🏋️'} ${routine.name} ${copy.dayRoutineSuffix}`
+      ? (routine.emoji || '🏋️') + ' ' + routine.name + ' ' + copy.dayRoutineSuffix
       : copy.dayFallbackTitle,
     body: copy.dayBody,
     tag: 'day-reminder',
@@ -43,9 +51,7 @@ export function dayReminderPush(lang, routine) {
 }
 
 // The missed-workout nudge (nudge.js). Its copy is translated in the frontend packs and generated
-// into nudge-copy.js, so every language the app speaks has it — unlike the strings above, which
-// predate that and fall back to English. de-CH is de with ß written ss, as in the frontend
-// (lib/i18n-core.js DERIVED_LOCALES).
+// into nudge-copy.js, so every language the app speaks has it.
 const nudgeCopyFor = lang => {
   if (lang === 'de-CH') {
     const ch = s => s.replace(/ß/g, 'ss');
@@ -56,6 +62,6 @@ const nudgeCopyFor = lang => {
 export function nudgePush(lang, tone, routine, iso) {
   const copy = nudgeCopyFor(lang)[NUDGE_COPY.en[tone] ? tone : 'friendly'];
   const line = copy.lines[lineIndex(iso, copy.lines.length)];
-  const name = routine?.name || 'openGym';
+  const name = routine?.name || 'Entren.ar';
   return { title: copy.title, body: line.replace('{0}', () => name), tag: 'nudge' };
 }

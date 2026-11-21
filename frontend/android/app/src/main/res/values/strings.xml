@@ -2,10 +2,10 @@
 <resources>
     <string name="app_name">Entren.ar</string>
     <string name="title_activity_main">Entren.ar</string>
-    <string name="package_name">ch.duartesantos.opengym</string>
-    <string name="custom_url_scheme">ch.duartesantos.opengym</string>
-    <string name="rest_countdown_channel_name">Rest countdown</string>
-    <string name="rest_channel_name">Rest timer</string>
-    <string name="rest_quiet_channel_name">Rest timer, without vibration</string>
-    <string name="rest_channel_desc">Rest between sets, in the notification shade. The lock screen shows it only when notifications are allowed there.</string>
+    <string name="package_name">ar.entren.app</string>
+    <string name="custom_url_scheme">ar.entren.app</string>
+    <string name="rest_countdown_channel_name">Cuenta regresiva de descanso</string>
+    <string name="rest_channel_name">Temporizador de descanso</string>
+    <string name="rest_quiet_channel_name">Temporizador de descanso, sin vibración</string>
+    <string name="rest_channel_desc">Descanso entre series, en el panel de notificaciones. La pantalla de bloqueo solo lo muestra si las notificaciones están permitidas.</string>
 </resources>
