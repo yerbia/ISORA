@@ -103,8 +103,8 @@ export default function AdminCoach() {
   // had just uncapped daily spend on their API key, silently. An empty box is no change now: the
   // stored value goes back into it and nothing is written. Removing the cap takes typing a 0.
   const capBlur = key => e => {
-    if (e.target.value.trim() === '') { e.target.value = d.caps[key]; return }
-    if (+e.target.value !== d.caps[key]) patch({ caps: { ...d.caps, [key]: +e.target.value } })
+    if (e.target.value.trim() === '') { e.target.value = caps[key]; return }
+    if (+e.target.value !== caps[key]) patch({ caps: { ...caps, [key]: +e.target.value } })
   }
   const disconnect = async () => {
     setBusy(true)
@@ -120,7 +120,9 @@ export default function AdminCoach() {
     <div className="adm-lead">Force-disabled by <code>COACH_DISABLED</code> in the server's environment. Remove that variable and restart to configure the Coach here.</div>
   </div>
 
-  const meta = d.providers.find(p => p.id === d.provider) || {}
+  const providers = Array.isArray(d.providers) ? d.providers : []
+  const caps = d.caps && typeof d.caps === 'object' ? d.caps : { perProfileDaily: 0, instanceDaily: 0 }
+  const meta = providers.find(p => p.id === d.provider) || {}
   const authState = d.auth?.state
   const authed = authState === 'connected' || authState === 'not-required' || authState === 'optional'
   const needsEndpoint = !!meta.baseUrl
@@ -136,9 +138,9 @@ export default function AdminCoach() {
 
   // Chips, grouped.
   const groups = [
-    { title: 'Paste an API key', hint: 'Plain HTTPS to the provider. Works on the default api image, nothing extra to install.', items: d.providers.filter(p => p.http) },
-    { title: 'Runs a local AI runtime', hint: 'Needs the bigger api image built with --target coach.', items: d.providers.filter(p => RUNTIME_IDS.includes(p.id)) },
-    { title: 'Testing', hint: 'A built-in fake that answers instantly, so the whole loop can be tried without an account.', items: d.providers.filter(p => TESTING_IDS.includes(p.id)) }
+    { title: 'Paste an API key', hint: 'Plain HTTPS to the provider. Works on the default api image, nothing extra to install.', items: providers.filter(p => p.http) },
+    { title: 'Runs a local AI runtime', hint: 'Needs the bigger api image built with --target coach.', items: providers.filter(p => RUNTIME_IDS.includes(p.id)) },
+    { title: 'Testing', hint: 'A built-in fake that answers instantly, so the whole loop can be tried without an account.', items: providers.filter(p => TESTING_IDS.includes(p.id)) }
   ]
 
   const hasCredentialStep = !!(meta.setupToken || meta.apiKey)
@@ -316,10 +318,10 @@ export default function AdminCoach() {
           <div className="adm-group-t">Limits</div>
           <div className="adm-hint">How many Coach runs are allowed per day. Every run is one request on the provider account above. 0 means no limit.</div>
           <div className="adm-kv"><span className="k">Per user, per day</span>
-            <span className="v"><input className="num" type="number" min="0" max="200" defaultValue={d.caps.perProfileDaily} disabled={busy}
+            <span className="v"><input className="num" type="number" min="0" max="200" defaultValue={caps.perProfileDaily} disabled={busy}
               onBlur={capBlur('perProfileDaily')} /></span></div>
           <div className="adm-kv"><span className="k">Whole instance, per day</span>
-            <span className="v"><input className="num" type="number" min="0" max="5000" defaultValue={d.caps.instanceDaily} disabled={busy}
+            <span className="v"><input className="num" type="number" min="0" max="5000" defaultValue={caps.instanceDaily} disabled={busy}
               onBlur={capBlur('instanceDaily')} /></span></div>
           <div className="adm-hint" style={{ marginTop: 10 }}>How long a chat message, refinement or review note can be. The chat composer and the server both enforce this.</div>
           <div className="adm-kv"><span className="k">Max message length</span>

@@ -39,13 +39,13 @@
     const androidCard = document.querySelector('#descargas .download .card')
     if (androidCard) {
       const copy = androidCard.querySelector('p')
-      if (copy) copy.textContent = 'APK de pruebas internas para telÃ©fonos Android. DescÃ¡rgalo e instÃ¡lalo manualmente; no estÃ¡ publicado en Google Play.'
+      if (copy) copy.textContent = 'APK de pruebas internas para teléfonos Android. Descárgalo e instálalo manualmente; no está publicado en Google Play.'
       const status = androidCard.querySelector('.status')
       if (status) {
         status.textContent = 'Disponible para pruebas'
         const link = document.createElement('a')
         link.className = 'button'
-        link.href = '/app-debug.apk'
+        link.href = 'https://github.com/yerbia/ISORA/releases/download/apk/app-debug.apk'
         link.download = 'app-debug.apk'
         link.textContent = 'Descargar APK para Android'
         status.parentNode.insertBefore(link, status)

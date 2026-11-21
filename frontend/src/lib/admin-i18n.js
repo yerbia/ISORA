@@ -163,6 +163,10 @@ const translate = (value, spanish) => spanish ? (ES[value] || value) : value
 
 function translateDynamic(value, spanish) {
   if (!spanish) return value
+  const users = value.match(/^([0-9]+) users Â· ([0-9]+) active this week$/)
+  if (users) return `${users[1]} usuarios Â· ${users[2]} activos esta semana`
+  const steps = value.match(/^([0-9]+) of ([0-9]+) steps done[.]$/)
+  if (steps) return `${steps[1]} de ${steps[2]} pasos completados.`
   if (/^\\d+ users · \\d+ active this week$/.test(value)) {
     return value.replace(/^(\\d+) users · (\\d+) active this week$/, '$1 usuarios · $2 activos esta semana')
   }
@@ -178,10 +182,13 @@ function apply(root, spanish) {
   for (const node of nodes) {
     const raw = sourceOf.get(node) ?? node.nodeValue
     sourceOf.set(node, raw)
-    const leading = raw.match(/^\\s*/)?.[0] || ''
-    const trailing = raw.match(/\\s*$/)?.[0] || ''
+    const leading = raw.match(/^\s*/)?.[0] || ''
+    const trailing = raw.match(/\s*$/)?.[0] || ''
     const body = raw.slice(leading.length, raw.length - trailing.length || undefined)
-    if (body) node.nodeValue = leading + translateDynamic(body, spanish) + trailing
+    if (body) {
+      const next = leading + translateDynamic(body, spanish) + trailing
+      if (next !== node.nodeValue) node.nodeValue = next
+    }
   }
   root.querySelectorAll('*').forEach(el => {
     for (const attr of ATTRS) {
@@ -189,7 +196,8 @@ function apply(root, spanish) {
       let saved = attrSource.get(el)
       if (!saved) { saved = {}; attrSource.set(el, saved) }
       saved[attr] ??= el.getAttribute(attr)
-      el.setAttribute(attr, translateDynamic(saved[attr], spanish))
+      const next = translateDynamic(saved[attr], spanish)
+      if (next !== el.getAttribute(attr)) el.setAttribute(attr, next)
     }
   })
 }
