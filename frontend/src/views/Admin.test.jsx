@@ -17,7 +17,7 @@ vi.mock('../lib/api.js', () => ({
   }
 }))
 vi.mock('../store/useStore.js', () => {
-  const snap = () => ({ user: { id: 'adm', name: 'Admin', admin: true }, S: {} })
+  const snap = () => ({ user: mocks.user, S: {} })
   const useStore = selector => selector ? selector(snap()) : snap()
   useStore.getState = snap
   return { useStore }
@@ -39,7 +39,7 @@ function render(el) {
   const root = createRoot(host)
   mounted.push(root)
   act(() => root.render(el))
-  return host
+  return { host, rerender: next => act(() => root.render(next)) }
 }
 const settle = () => act(() => new Promise(r => setTimeout(r, 0)))
 
@@ -48,6 +48,7 @@ const good = { id: 'w1', name: 'Push day', d: '2026-09-10', start: 1000, end: 61
 beforeEach(() => {
   document.body.innerHTML = ''
   mocks.sheets.length = 0
+  mocks.user = { id: 'adm', name: 'Admin', admin: true }
   mocks.answers = {
     '/api/admin/users': { users: [{ id: 'u1', name: 'Mallory', workouts: 2, lastSync: null, disabled: false }], invite_only: false },
     '/api/admin/invites': { invites: [] },
@@ -65,13 +66,13 @@ afterEach(() => { act(() => { mounted.splice(0).forEach(root => root.unmount()) 
 
 describe('Admin user drill-down', () => {
   it('opens a profile with malformed workout entries and still offers "Disable account"', async () => {
-    const page = render(<Admin />)
+    const { host: page } = render(<Admin />)
     await settle()
     const row = [...page.querySelectorAll('.item')].find(el => el.textContent.includes('Mallory'))
     expect(row).toBeTruthy()
     act(() => row.click())
     expect(mocks.sheets.length).toBe(1)
-    const sheet = render(mocks.sheets[0](() => {}))
+    const { host: sheet } = render(mocks.sheets[0](() => {}))
     await settle()
     const buttons = [...sheet.querySelectorAll('button')].map(b => b.textContent)
     expect(buttons).toContain('Disable account')
@@ -89,7 +90,7 @@ describe('Admin when the users cannot be loaded', () => {
   const text = page => page.textContent
   it('an answer without a list is an error, not an endless "Loading…"', async () => {
     mocks.answers['/api/admin/users'] = {}
-    const page = render(<Admin />)
+    const { host: page } = render(<Admin />)
     await settle()
     expect(text(page)).not.toContain('Loading…')
     expect(text(page)).toContain('Could not load the users')
@@ -98,7 +99,7 @@ describe('Admin when the users cannot be loaded', () => {
 
   it('a failed call says why, and "Try again" loads the list once the server answers', async () => {
     delete mocks.answers['/api/admin/users']
-    const page = render(<Admin />)
+    const { host: page } = render(<Admin />)
     await settle()
     expect(page.querySelector('[role="alert"]').textContent).toContain('not found')
 
@@ -112,7 +113,7 @@ describe('Admin when the users cannot be loaded', () => {
   })
 
   it('a list that loaded stays up when a later update fails, marked as the last one', async () => {
-    const page = render(<Admin />)
+    const { host: page } = render(<Admin />)
     await settle()
     delete mocks.answers['/api/admin/users']
     const refresh = page.querySelector('[aria-label="refresh"]')
@@ -120,5 +121,21 @@ describe('Admin when the users cannot be loaded', () => {
     await settle()
     expect(text(page)).toContain('The last update failed')
     expect([...page.querySelectorAll('.item')].some(el => el.textContent.includes('Mallory'))).toBe(true)
+  })
+})
+
+describe('Admin session hydration', () => {
+  it('loads users when the admin session becomes available after mount', async () => {
+    mocks.user = null
+    const { host: page, rerender } = render(<Admin />)
+    expect(page.textContent).toBe('')
+
+    mocks.user = { id: 'adm', name: 'Admin', admin: true }
+    // Re-render through the same hook contract used by the app when the store changes.
+    rerender(<Admin />)
+    await settle()
+
+    expect(page.textContent).toContain('1 users')
+    expect(page.textContent).toContain('Mallory')
   })
 })

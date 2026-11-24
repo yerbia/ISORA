@@ -2521,4 +2521,7 @@ export default {
   'ISORA is running as an app': 'Entren.ar funciona como app',
   'Full screen, works offline, and the lock-screen rest alert can reach you here.': 'Pantalla completa, funciona sin conexión y el aviso de descanso en la pantalla de bloqueo te llega aquí.',
   'Complete the required fields': 'Completa los campos obligatorios',
+  "Rest-timer alerts, even if ISORA is closed.": "Rest-timer alerts, even if ISORA is closed.",
+  "Hi, I’m your ISORA coach. What should I call you?": "Hi, I’m your ISORA coach. What should I call you?",
+  "Hi, I’m {0}, your ISORA buddy. What should I call you?": "Hi, I’m {0}, your ISORA buddy. What should I call you?",
 }

@@ -1,5 +1,7 @@
 import { create } from 'zustand'
-import { api, setRemoteAuth, currentSupabaseSession, bootstrapSupabaseSession } from '../lib/api.js'
+import { api, setRemoteAuth, bootstrapSupabaseSession } from '../lib/api.js'
+import { SUPABASE_URL } from '../lib/supabase.js'
+import { initSupabaseMobileAuth } from '../lib/supabase-mobile.js'
 import { localTZ } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
 import { registerCustom, healCustomEx } from '../lib/exercises.js'
@@ -1818,6 +1820,7 @@ export const useStore = create((set, get) => {
       await chooseLocal()
       set({ needsMobileOnboarding: false })
     },
+    finishMobileAuth() { set({ needsMobileOnboarding: false }) },
     // Redeems the pairing code shown in the browser (Settings → "Pair the mobile app") and
     // switches this device over to that account, same as signing in on the web does — the same
     // account pairing again merges what the phone kept (adoptProfile).
@@ -1888,9 +1891,33 @@ export const useStore = create((set, get) => {
       // case it behaves exactly like the signed-in web flow below, straight from here.
       if (MOBILE) {
         const remote = await loadRemote()
+        await initSupabaseMobileAuth()
+        const sbSession = await import('../lib/api.js').then(m => m.currentSupabaseSession?.()).catch(() => null)
         // Before the first request: a server behind Cloudflare Access answers nothing without it.
         await loadCfAccess({ pairedBase: remote?.mode === 'remote' ? remote.base : '' })
         set({ coachLocal: coachDeviceSettings(await loadCoachDevice()) })
+        if (sbSession?.access_token) {
+          setSync({ server: SUPABASE_URL || null })
+          await restoreFromMirror({ user: { id: sbSession.user.id } })
+          try {
+            const me = await api('/api/me')
+            get().setUser(me.user)
+            await get().loadConfig()
+            if (adoptOwed()) {
+              finishBoot()
+              get().resumeAdoption().then(() => syncReminder(get().S))
+              return
+            }
+            await get().pullState()
+            if (!get().sync.lastError) await applyStash()
+          } catch (e) {
+            get().setUser({ id: sbSession.user.id, name: sbSession.user.user_metadata?.name || sbSession.user.email?.split('@')[0] || '' })
+            failed(e, { pending: owes() })
+          }
+          syncReminder(get().S)
+          finishBoot({ needsMobileOnboarding: false })
+          return
+        }
         if (remote?.mode === 'remote') {
           remoteSession = remote
           remoteSessionChecked = Date.now()
@@ -1989,7 +2016,7 @@ export const useStore = create((set, get) => {
         try { await api('/api/logout', { method: 'POST', body: '{}' }); logoutOwed(false) } catch { /* owed until it is answered */ }
         if (logoutOwed()) { finishBoot(); return }
       }
-      const sbSession = await currentSupabaseSession().catch(() => null)
+      const sbSession = await import('../lib/api.js').then(m => m.currentSupabaseSession?.()).catch(() => null)
       const supabaseWeb = !!sbSession?.access_token
       // ISORA starts with a local guest copy on a genuinely empty browser. This removes the
       // account wall from first launch while preserving the existing sign-in screen for returning

@@ -6,9 +6,8 @@ import Login from './Login.jsx'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
-/* The sign-in screen's way in for a device whose person already has a profile elsewhere (#95):
-   a code from the signed-in device gives this one a passkey of its own, instead of "Create new
-   profile" making a second, empty one. Only where this browser can make a passkey. */
+/* The sign-in screen is account-based now: Supabase email/password and Google are the supported
+   ways in. Android no longer exposes the old device-link code flow. */
 const mocks = vi.hoisted(() => {
   const state = { webauthn: true, config: null, sheets: [] }
   state.snapshot = () => ({
@@ -52,22 +51,18 @@ const button = (host, text) => [...host.querySelectorAll('button')].find(b => b.
 beforeEach(() => { mocks.webauthn = true; mocks.config = null; mocks.sheets.length = 0 })
 afterEach(() => { act(() => { mounted.splice(0).forEach(({ root, host }) => { root.unmount(); host.remove() }) }) })
 
-describe('Login: a code from another device', () => {
-  it('sits under the ways in where passkeys work, and opens the sheet that redeems a code', () => {
+describe('Login: Supabase account access', () => {
+  it('offers email/password and Google without a device-link code', () => {
     mocks.config = { allow_guest: true }
     const page = mount(<Login />)
     const all = buttons(page)
-    expect(all.indexOf('Use a code from your other device')).toBe(all.indexOf('Create new profile') + 1)
-    act(() => button(page, 'Use a code from your other device').click())
-    const sheet = mount(mocks.sheets[0](() => {}))
-    expect(sheet.querySelector('h3').textContent).toBe('Add this device')
-    expect(sheet.querySelector('input[placeholder="Code from your other device"]')).toBeTruthy()
+    expect(all).toContain('Sign in')
+    expect(all.join(' ')).toContain('Continue with Google')
+    expect(all.join(' ')).not.toContain('code from your other device')
   })
 
-  it('is not offered in a browser that cannot make a passkey, with or without passwords', () => {
-    mocks.webauthn = false
-    expect(buttons(mount(<Login />))).not.toContain('Use a code from your other device')
-    mocks.config = { password_login: true }
-    expect(buttons(mount(<Login />))).not.toContain('Use a code from your other device')
+  it('does not offer a device-link code even when passkey support is present', () => {
+    mocks.webauthn = true
+    expect(buttons(mount(<Login />)).join(' ')).not.toContain('code from your other device')
   })
 })

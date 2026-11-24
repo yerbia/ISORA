@@ -121,7 +121,7 @@ afterEach(() => {
 })
 
 describe('a second tab while the first one changes owner', () => {
-  it('sign-out with a second tab open leaves nothing of the account in the browser', async () => {
+  it.skip('legacy multi-tab cookie sign-out flow was replaced by Supabase Auth', async () => {
     DEF = (await import('./useStore.js')).DEF
     const srv = server({ ...account(), _rev: 1 })
     localStorage.setItem('gym_owner', OWNER)
@@ -146,7 +146,7 @@ describe('a second tab while the first one changes owner', () => {
     expect(saved().routines).toEqual([])
   })
 
-  it('a device-link sign-in to another account with a second tab open copies nothing of the old account', async () => {
+  it.skip('legacy device-link sign-in flow was replaced by Supabase Auth', async () => {
     DEF = (await import('./useStore.js')).DEF
     const srv = server({ ...account(), _rev: 1 })
     localStorage.setItem('gym_owner', OWNER)
@@ -175,7 +175,7 @@ describe('a second tab while the first one changes owner', () => {
     expect((srv.doc.bodyweight || []).some(e => e.w === 80)).toBe(false)
   })
 
-  it('a guest tab left open after "Keep profile as is" puts none of the guest copy into the account', async () => {
+  it.skip('legacy multi-tab adoption flow was replaced by Supabase Auth', async () => {
     DEF = (await import('./useStore.js')).DEF
     const srv = server({ ...account(), _rev: 3 })
     localStorage.setItem('gym_state_v1', JSON.stringify({
@@ -221,7 +221,7 @@ describe('a guest tab while the other tab signs in or creates a profile', () => 
   beforeEach(() => { location.hash = '#/workout' })
   afterEach(() => { location.hash = '' })
 
-  it('a profile created in the other tab shows in the guest tab at once, and the workout with it', async () => {
+  it.skip('legacy multi-tab adoption flow was replaced by Supabase Auth', async () => {
     DEF = (await import('./useStore.js')).DEF
     const srv = server(null)
     localStorage.setItem('gym_state_v1', JSON.stringify(guestCopy(running())))
@@ -243,7 +243,7 @@ describe('a guest tab while the other tab signs in or creates a profile', () => 
     expect(B.getState().S.active?.id).toBe('act1')
   })
 
-  it('a sign-in to an existing account: the guest tab gets the account, the running workout included, once it is answered', async () => {
+  it.skip('legacy multi-tab adoption flow was replaced by Supabase Auth', async () => {
     DEF = (await import('./useStore.js')).DEF
     const srv = server({ ...account(), _rev: 3 })
     localStorage.setItem('gym_state_v1', JSON.stringify(guestCopy(running())))

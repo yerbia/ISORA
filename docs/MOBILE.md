@@ -14,23 +14,34 @@ openGym ships in two flavors from the same codebase:
 | | **Self-hosted** (this repo's default) | **Mobile app** (`VITE_MOBILE=1`) |
 |---|---|---|
 | Runs | in any browser, against your own server | natively on iPhone / Android (Capacitor shell) |
-| Accounts | passkey sign-in, one profile per person | none — the phone *is* the account |
-| Data | synced to your server, readable on desktop | stays on the device (file in the app's private storage) |
+| Accounts | passkey sign-in, one profile per person | Supabase email/password or Google sign-in |
+| Data | synced to your server, readable on desktop | synced directly to Supabase `workout_states` |
 | Reminders | Web Push from your server | native local notifications, no server involved |
 | Exercise media | served by your server (`exercise-media/`) | packed into the app (`exercise-media/`) |
 
-The mobile flavor never talks to a backend by default: no sign-in screen, no sync, no
-telemetry. State is mirrored from `localStorage` into `opengym-state.json` in the app's
-private data directory on every change (iOS is allowed to evict WebView storage under
-pressure — the file mirror is the durable copy and is restored on launch). Backups go out
-through the OS share sheet instead of a browser download.
+The mobile flavor uses Supabase Auth and the `workout_states` table when it is built with
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. Android stores the Supabase session in
+Android Keystore-backed encrypted preferences through `@aparajita/capacitor-secure-storage`;
+it never uses the old bearer-token pairing as the primary login path. The state is still
+mirrored into `opengym-state.json` in the app's private data directory on every change, so
+an offline edit is kept until connectivity returns. Backups go out through the OS share
+sheet instead of a browser download.
 
-### Connecting the app to your own server
+### Signing in on Android
 
-On first launch the app asks how you want to use it. Alongside the fully local mode above,
-you can instead **connect it to a self-hosted openGym server** — your data then lives there,
-synced the same way the browser PWA does, instead of only on the phone. This is a mode of the
-same app, not a different build or download.
+On first launch, choose **Sign in** or **Create an account**. Email/password uses Supabase
+Auth directly. **Continue with Google** opens the system browser and returns to the app through
+`ar.entren.app://auth/callback`; the Android manifest registers that deep link and Capacitor's
+`App.appUrlOpen` listener exchanges the PKCE code before the store starts its first pull.
+
+The Supabase project must allow the web app's normal URL and `ar.entren.app://auth/callback` as
+redirect URLs. Build the mobile app with the public Supabase URL and anon/publishable key; the
+service-role key is never shipped to the APK. RLS should allow each authenticated user to access
+only their own `profiles` and `workout_states` rows; `supabase/schema.sql` contains those policies.
+
+The old **Connect to my server** code flow remains only as a migration path for installations
+that were already paired before this change. New Android sessions do not depend on a server
+address, a one-time code, or a bearer token.
 
 Passkeys can't be used for this: the app's WebView runs at its own origin, which never
 matches the real hostname WebAuthn needs. Instead you *pair* the device from a browser

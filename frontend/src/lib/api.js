@@ -3,7 +3,7 @@ import { t } from './i18n-core.js'
 import { MOBILE } from './mobile.js'
 import { appBase } from './app-base.js'
 import { nativeFetch } from './capacitor-fetch.js'
-import { supabase } from './supabase.js'
+import { SUPABASE_URL, supabase } from './supabase.js'
 
 export const IS_APPLE = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent)
 export const IS_ANDROID = /Android/.test(navigator.userAgent)
@@ -19,9 +19,8 @@ export const vault = () => (IS_APPLE ? t('iCloud Keychain') : IS_ANDROID ? t('Go
 // API check produces a false negative (notably Chrome on iOS). The real create/get calls still run
 // only after the user chooses a passkey action and surface any genuine browser error there.
 // The Android shell never authenticates with WebAuthn. Its Capacitor origin cannot satisfy the
-// server's RP_ID, and the supported mobile path is the one-time pairing code redeemed from the
-// already authenticated web app. Keeping this guard here makes accidental future UI exposure
-// fail closed even if a passkey component is imported by a shared route.
+// server's RP_ID; Android uses Supabase Auth directly, while the old pairing endpoints remain
+// available only for migration of installations that already have a pairing file.
 export const webauthnOK = () => !MOBILE && typeof window.PublicKeyCredential !== 'undefined'
 
 // The paired mobile app (lib/remote.js) is the only caller of these — everywhere else stays on
@@ -76,10 +75,16 @@ export async function supabaseUpdatePassword(password) {
 }
 
 export async function supabaseSignInWithGoogle() {
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'google', options: { redirectTo: window.location.origin }
+  const mobile = MOBILE
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google', options: { redirectTo: mobile ? (import.meta.env.VITE_SUPABASE_REDIRECT_URL || 'ar.entren.app://auth/callback') : window.location.origin, skipBrowserRedirect: mobile }
   })
   if (error) throw error
+  if (mobile && data?.url) {
+    const { registerPlugin } = await import('@capacitor/core')
+    const AuthBrowser = registerPlugin('AuthBrowser')
+    await AuthBrowser.open({ url: data.url })
+  }
 }
 
 export async function supabaseSignOut() {
@@ -108,6 +113,7 @@ const failure = (message, code, status) => Object.assign(new Error(message), { c
 
 export async function api(path, opts) {
   const { timeout, ...init } = opts || {}
+  if (MOBILE && !remoteBase) return directSupabaseApi(path, init)
   // A phone with no server to talk to: local mode, or a pairing that is gone. There is no
   // relative URL to fall back on here — the WebView's own origin is Capacitor's local asset
   // server, which answers ANY path, PUT included, with index.html and a 200, so a push "landed"
@@ -124,6 +130,46 @@ export async function api(path, opts) {
   const url = remoteBase ? remoteBase + path : appBase().replace(/\/$/, '') + path
   const ms = timeout != null ? timeout : (init.method || 'GET').toUpperCase() === 'GET' ? TIMEOUT_GET_MS : TIMEOUT_MS
   return request(url, Object.assign({}, init, { headers }), ms)
+}
+
+async function directSupabaseSession() {
+  const { data, error } = await supabase.auth.getSession()
+  if (error) throw error
+  if (!data.session?.user?.id) throw failure(t('You need to sign in first.'), 'auth', 401)
+  return data.session
+}
+
+async function directSupabaseApi(path, init) {
+  const session = await directSupabaseSession()
+  const uid = session.user.id
+  if (path === '/api/me') {
+    const { data, error } = await supabase.from('profiles').select('id,name,admin,disabled,created_at').eq('id', uid).maybeSingle()
+    if (error) throw error
+    if (data?.disabled) throw failure(t('This account is disabled.'), 'auth', 403)
+    return { user: { id: uid, name: data?.name || session.user.user_metadata?.name || session.user.email?.split('@')[0] || '', admin: !!data?.admin, disabled: !!data?.disabled, created: data?.created_at || session.user.created_at || null } }
+  }
+  if (path === '/api/config') return { allow_guest: false, invite_only: false, password_login: true }
+  if (path === '/api/auth/supabase') return directSupabaseApi('/api/me', init)
+  if (path === '/api/logout') { const { error } = await supabase.auth.signOut(); if (error) throw error; return { ok: true } }
+  if (path === '/api/activity') return { ok: true }
+  if (path === '/api/data' || path === '/api/data/rev') {
+    const { data: row, error } = await supabase.from('workout_states').select('state,updated_at').eq('user_id', uid).maybeSingle()
+    if (error) throw error
+    const rev = row?.updated_at ? Date.parse(row.updated_at) || 0 : 0
+    if (path.endsWith('/rev')) return { rev, wid: null }
+    if ((init.method || 'GET').toUpperCase() === 'GET') return { state: row?.state || {}, rev, wid: null }
+    let body
+    try { body = JSON.parse(init.body || '{}') } catch { throw failure(t('Invalid sync data.'), 'bad-request', 400) }
+    const state = body.state && typeof body.state === 'object' ? { ...body.state } : {}
+    delete state.active
+    delete state._rev
+    delete state._wid
+    const updatedAt = new Date().toISOString()
+    const { error: writeError } = await supabase.from('workout_states').upsert({ user_id: uid, state, updated_at: updatedAt }, { onConflict: 'user_id' })
+    if (writeError) throw writeError
+    return { ok: true, rev: Date.parse(updatedAt), wid: null }
+  }
+  throw failure(t('This feature is not available in the Android cloud mode.'), 'unsupported', 501)
 }
 
 // One exchange, bounded by `ms`. No status on the timeout, like a fetch that failed outright: to

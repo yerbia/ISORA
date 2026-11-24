@@ -3,6 +3,7 @@ import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { bootstrapSupabaseSession, supabaseResetPassword, supabaseSignIn, supabaseSignInWithGoogle, supabaseSignUp, supabaseUpdatePassword } from '../lib/api.js'
 import { supabase } from '../lib/supabase.js'
+import { MOBILE } from '../lib/mobile.js'
 import { t } from '../lib/i18n.js'
 import { DEMO, PERSONAL, REPO } from '../lib/demo.js'
 import { guestAllowed } from '../lib/guest.js'
@@ -54,7 +55,7 @@ export function ForgotPasswordForm({ onBack }) {
 }
 
 export function AccountForm({ mode, onMode, onDone }) {
-  const { setUser, adoptProfile } = useStore()
+  const { setUser, adoptProfile, finishMobileAuth } = useStore()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -70,11 +71,14 @@ export function AccountForm({ mode, onMode, onDone }) {
         ? await supabaseSignUp(email.trim(), password, name.trim())
         : await supabaseSignIn(email.trim(), password)
       if (!result.session) { useUI.getState().toast(t('Check your email to confirm your account.')); setBusy(false); return }
-      const boot = await bootstrapSupabaseSession(result.session)
+      const boot = MOBILE
+        ? { user: { id: result.user?.id || result.session.user.id, name: result.user?.user_metadata?.name || result.user?.email?.split('@')[0] || email.split('@')[0] } }
+        : await bootstrapSupabaseSession(result.session)
       // Resolve this browser's local copy against the account copy before syncing. A direct
       // push here made every new browser overwrite or isolate the profile instead of merging it.
       setUser(boot.user, { adopt: true })
       await useStore.getState().adoptProfile(async () => true)
+      if (MOBILE) finishMobileAuth?.()
       useUI.getState().toast(t('Welcome, {0}', boot.user.name || email.split('@')[0]))
       onDone?.()
     } catch (err) { useUI.getState().toast(err.message || t('Sign-in failed')); setBusy(false) }

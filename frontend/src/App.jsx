@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect, useLayoutEffect, useRef } from 'react'
 import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation, useNavigationType, useParams } from 'react-router-dom'
 import { useStore } from './store/useStore.js'
+import { initSupabaseMobileAuth } from './lib/supabase-mobile.js'
 import { useUI } from './store/useUI.js'
 import { bindUI } from './components/ui.jsx'
 import { setWeightDecimals } from './lib/format.js'
@@ -321,6 +322,13 @@ export default function App() {
   const boot = useStore(s => s.boot)
   const forceRecovery = /(?:^|[&#?])type=recovery(?:&|$)/.test(window.location.hash + window.location.search) || window.location.hash.includes('reset-password')
   useEffect(() => { if (!forceRecovery) boot() }, [boot, forceRecovery])
+  useEffect(() => {
+    let stop
+    const onAuth = () => { if (!forceRecovery) boot() }
+    window.addEventListener('entrenar:supabase-auth', onAuth)
+    initSupabaseMobileAuth().then(fn => { stop = fn }).catch(() => {})
+    return () => { window.removeEventListener('entrenar:supabase-auth', onAuth); stop?.() }
+  }, [boot, forceRecovery])
   // Android system back — sheet, then page, then press-again-to-exit (see lib/back.js)
   useEffect(() => {
     let stop = null, gone = false

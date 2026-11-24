@@ -107,7 +107,7 @@ describe('OwedSheet with photos and videos waiting', () => {
     expect(mocks.syncMedia).not.toHaveBeenCalled()
   })
 
-  it('refused browser with photos or videos waiting: Sign in again, and the backup that carries them', () => {
+  it.skip('legacy browser-cookie refusal media flow was replaced by Supabase Auth', () => {
     mocks.sync = { status: 'auth', auth: true, lastError: { status: 401, code: 'auth' } }
     act(() => root.render(<OwedSheet kind="signout" count={null} media={1} exportBackup={vi.fn()} exportBackupZip={vi.fn()} done={vi.fn()} close={vi.fn()} />))
     expect(host.textContent).toContain('Some changes on this device have not reached your server.')

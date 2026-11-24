@@ -4,23 +4,23 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 // other build keeps the MP4 loops.
 describe('gifSrc and VITE_CLIP_EXT', () => {
   afterEach(() => { vi.unstubAllEnvs(); vi.resetModules() })
-  const ex = { id: '0025', img: '0025.webp', gif: '0025.mp4', fv: '9025' }
+  const ex = { id: '9999', img: '9999.webp', gif: '9999.mp4', fv: '9998' }
 
   it('names MP4 loops by default', async () => {
     const { gifSrc, isVideoSrc } = await import('./exercises.js')
-    expect(gifSrc(ex, 'male')).toBe('exercise-media/clip/0025.mp4')
-    expect(gifSrc(ex, 'female')).toBe('exercise-media/clip/9025.mp4')
+    expect(gifSrc(ex, 'male')).toBe('exercise-media/clip/9999.mp4')
+    expect(gifSrc(ex, 'female')).toBe('exercise-media/clip/9998.mp4')
     expect(isVideoSrc(gifSrc(ex, 'male'))).toBe(true)
   })
 
   it('names animated WebP images in the Android release', async () => {
     vi.stubEnv('VITE_CLIP_EXT', 'webp')
     const { gifSrc, imgSrc, isVideoSrc } = await import('./exercises.js')
-    expect(gifSrc(ex, 'male')).toBe('exercise-media/clip/0025.webp')
-    expect(gifSrc(ex, 'female')).toBe('exercise-media/clip/9025.webp')
+    expect(gifSrc(ex, 'male')).toBe('exercise-media/clip/9999.webp')
+    expect(gifSrc(ex, 'female')).toBe('exercise-media/clip/9998.webp')
     expect(isVideoSrc(gifSrc(ex, 'male'))).toBe(false)
-    expect(imgSrc(ex, 'male')).toBe('exercise-media/still/0025.webp')
+    expect(imgSrc(ex, 'male')).toBe('exercise-media/still/9999.webp')
     // a fork's GIF stays a GIF
-    expect(gifSrc({ ...ex, gif: '0025.gif', fv: undefined }, 'male')).toBe('exercise-media/clip/0025.gif')
+    expect(gifSrc({ ...ex, gif: '9999.gif', fv: undefined }, 'male')).toBe('exercise-media/clip/9999.gif')
   })
 })

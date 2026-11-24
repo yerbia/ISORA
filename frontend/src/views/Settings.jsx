@@ -900,13 +900,18 @@ export default function Settings({ page = null, find = null, via = null }) {
             onClick={() => window.open(REPO, '_blank', 'noopener')} />
         </> : user ? <>
           {user.admin && <Row icon="crown" iconTint="var(--indigo)" title={t('Admin dashboard')} accessory="chevron" onClick={() => nav('/admin')} />}
+          {!MOBILE && !DEMO && <>
+            <PasskeysRow state={passkeys.st} changed={credsChanged} />
+            <DeviceLinkRow state={passkeys.st} />
+            {pwOn && <PasswordRow version={credsV} />}
+          </>}
           <Row icon="qr" iconTint="var(--blue)" title={t('Pair the mobile app')} subtitle={t('Connect the ISORA app on your phone to this account.')} accessory="chevron"
             onClick={() => useUI.getState().openSheet(close => <PairSheet close={close} />)} />
           <Row icon="signOut" iconTint="var(--red)" title={t('Sign out')} danger onClick={signOutHere} />
           <Row icon="shield" iconTint="var(--red)" title={t('Sign out everywhere')} subtitle={t('Ends this profile’s sessions on all your devices.')} danger onClick={signOutEverywhere} />
           <AccountIdRow id={user.id} />
         </> : <>
-          <Row icon="person" iconTint="var(--acc)" title="Iniciar sesión con email o Google" subtitle="Mantén tu perfil y tus entrenamientos disponibles en todos tus dispositivos." accessory="chevron"
+          <Row icon="person" iconTint="var(--acc)" title={t('Sign in')} subtitle={t('Your workouts. Your weights. Your profile.')} accessory="chevron"
             onClick={() => useUI.getState().openSheet(close => <AccountAccessSheet />)} />
           <KeptChangesRows />
         </>}

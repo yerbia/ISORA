@@ -1,9 +1,7 @@
 // @vitest-environment happy-dom
 
-/* The phone build with no server to talk to. Its WebView's own origin is Capacitor's local asset
-   server, which answers every path — PUT /api/data included — with index.html and a 200. A phone
-   whose pairing was gone sent its pushes there and marked every change as synced. Without a
-   paired base, api() now refuses before any request goes out. */
+/* The phone build authenticates directly with Supabase. Without a Supabase session it refuses
+   before touching Capacitor's local asset server; an existing legacy pairing still uses HTTP. */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('./mobile.js', () => ({ MOBILE: true }))
@@ -13,11 +11,11 @@ import { api, beacon, setRemoteAuth } from './api.js'
 afterEach(() => { vi.unstubAllGlobals(); setRemoteAuth('', null) })
 
 describe('api() on the phone build', () => {
-  it('without a paired server it refuses with not-paired (status 0) and never calls fetch', async () => {
+  it('without a Supabase session it refuses with auth (401) and never calls fetch', async () => {
     const fetch = vi.fn()
     vi.stubGlobal('fetch', fetch)
-    await expect(api('/api/data', { method: 'PUT', body: '{}' })).rejects.toMatchObject({ code: 'not-paired', status: 0 })
-    await expect(api('/api/me')).rejects.toMatchObject({ code: 'not-paired', status: 0 })
+    await expect(api('/api/data', { method: 'PUT', body: '{}' })).rejects.toMatchObject({ code: 'auth', status: 401 })
+    await expect(api('/api/me')).rejects.toMatchObject({ code: 'auth', status: 401 })
     expect(fetch).not.toHaveBeenCalled()
   })
 

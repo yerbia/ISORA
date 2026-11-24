@@ -116,5 +116,6 @@ export default defineConfig({
       } : {})
     }
   },
-  build: { chunkSizeWarningLimit: 1500 }
+  build: { chunkSizeWarningLimit: 1500 },
+  test: { setupFiles: ['./test/setup.js'] }
 })

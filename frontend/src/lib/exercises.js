@@ -201,9 +201,14 @@ export const figureOf = S => (S?.exFigure === 'female' || S?.exFigure === 'male'
 const drawing = (ex, figure) => (figure === 'female' ? ex.fv : figure === 'male' ? ex.mv : null) || null
 export const imgSrc = (ex, figure) => IMG_BASE + (drawing(ex, figure) ? drawing(ex, figure) + '.webp' : ex.img)
 const clipFile = f => (CLIP_EXT !== '.mp4' && f.endsWith('.mp4') ? f.slice(0, -4) + CLIP_EXT : f)
-export const gifSrc = (ex, figure) => HD_GIF_MAP[ex?.id]
-  ? HD_GIF_BASE + HD_GIF_MAP[ex.id]
-  : GIF_BASE + clipFile(drawing(ex, figure) ? drawing(ex, figure) + '.mp4' : ex.gif)
+export const gifSrc = (ex, figure) => {
+  const drawn = drawing(ex, figure)
+  // A gender-specific drawing must win over the HD map for the catalogue exercise; otherwise
+  // switching the body figure can leave the animation on the original picture.
+  if (drawn) return GIF_BASE + clipFile(drawn + '.mp4')
+  if (ex?.fv || ex?.mv) return GIF_BASE + clipFile(ex.gif)
+  return HD_GIF_MAP[ex?.id] ? HD_GIF_BASE + HD_GIF_MAP[ex.id] : GIF_BASE + clipFile(ex.gif)
+}
 // The catalogue's animations are short MP4 loops; a fork's or an older build's may still be GIFs.
 export const isVideoSrc = src => /\.(mp4|webm)(\?|$)/i.test(src || '')
 

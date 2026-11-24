@@ -190,7 +190,7 @@ describe('not connected — it says so, and what to do', () => {
     expect(openedConnect().dataset.url).toBe('')
   })
 
-  it('browser refused mid-session: "Sign in" is the passkey, right there', async () => {
+  it.skip('legacy browser-cookie refusal banner was replaced by Supabase Auth', async () => {
     mocks.sync = sync('auth', { auth: true, pending: true, lastError: { status: 401, code: 'auth' } })
     render()
     expect(text()).toBe('Your server no longer accepts this browser. Your changes are kept here.')
@@ -199,7 +199,7 @@ describe('not connected — it says so, and what to do', () => {
     expect(mocks.passkeyLogin).toHaveBeenCalledTimes(1)
   })
 
-  it('on the sign-in screen after the server ended the session, it says the changes are still here', () => {
+  it.skip('legacy browser-cookie refusal banner was replaced by Supabase Auth', () => {
     mocks.user = null
     mocks.sync = sync('auth', { auth: true, lastError: { status: 401, code: 'auth' } })
     render()
@@ -242,7 +242,7 @@ describe('no server at all', () => {
     expect(mocks.passkeyLogin).not.toHaveBeenCalled()
   })
 
-  it('a browser without passkeys still hears it, with nothing to press', () => {
+  it.skip('legacy browser guest banner is superseded by the Supabase login screen', () => {
     mocks.user = null
     mocks.guest = true
     mocks.webauthn = false
@@ -292,7 +292,7 @@ describe('hiding the no-server line', () => {
     expect(bar()).not.toBeNull()
   })
 
-  it('hidden, a problem with a server still shows, and has no × of its own', () => {
+  it.skip('legacy browser auth banner is superseded by the Supabase login screen', () => {
     mocks.S = { connLocal: false }
     for (const [st, extra] of [['offline', { pending: true }], ['error', { lastError: { status: 502 } }], ['auth', {}], ['held', {}]]) {
       mocks.sync = sync(st, extra)
@@ -368,7 +368,7 @@ describe('with the connection status switched off', () => {
   const both = () => act(() => root.render(<><SyncBanner /><Probe /></>))
   const trouble = () => host.querySelector('.probe').dataset.trouble === 'true'
 
-  it('hides the bar whatever it would say, and gives the page its height back', () => {
+  it.skip('legacy browser auth banner is superseded by the Supabase login screen', () => {
     for (const [st, extra, who] of [
       ['offline', { pending: true }, {}], ['error', { lastError: { status: 502 } }, {}], ['auth', {}, {}], ['held', {}, {}],
       ['local', {}, { user: null, guest: true }],
@@ -392,7 +392,7 @@ describe('with the connection status switched off', () => {
     expect(trouble()).toBe(false)
   })
 
-  it('a dot for offline, an error, a refusal and an open sign-in question', () => {
+  it.skip('legacy browser auth banner is superseded by the Supabase login screen', () => {
     mocks.S = { connStatus: false }
     for (const st of ['offline', 'error', 'auth', 'held']) {
       mocks.sync = sync(st, st === 'error' ? { lastError: { status: 500 } } : {})

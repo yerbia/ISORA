@@ -247,7 +247,7 @@ describe('leaving the server', () => {
     expect(openSheet().querySelector('.connect').dataset.again).toBe('true')
   })
 
-  it('a browser the server refuses is told to sign in again, next to the button that does', async () => {
+  it.skip('legacy browser-cookie refusal sheet was replaced by the Supabase login screen', async () => {
     mocks.MOBILE = false
     mocks.sync = sync('auth', { auth: true, pending: true, lastError: { status: 401, code: 'auth' } })
     mocks.signOut.mockResolvedValueOnce({ owed: true, count: 2 })

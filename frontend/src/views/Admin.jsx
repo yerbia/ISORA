@@ -276,7 +276,13 @@ export default function Admin() {
     .catch(e => setUsersErr(e.message || 'Failed to load'))
   const loadInvites = () => api('/api/admin/invites').then(d => setInvites(d.invites)).catch(() => {})
   // poll every 15s so the "training now" section stays live without a manual refresh
-  useEffect(() => { if (!user?.admin) return; loadUsers(); loadInvites(); const iv = setInterval(loadUsers, 15000); return () => clearInterval(iv) }, [])
+  useEffect(() => {
+    if (!user?.admin) return
+    loadUsers()
+    loadInvites()
+    const iv = setInterval(loadUsers, 15000)
+    return () => clearInterval(iv)
+  }, [user?.admin])
   if (!user?.admin) return null
 
   const openUser = id => openSheet(close => <UserDetail id={id} onChanged={loadUsers} close={close} />)

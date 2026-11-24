@@ -180,7 +180,14 @@ function apply(root, spanish) {
   const nodes = []
   while (walker.nextNode()) nodes.push(walker.currentNode)
   for (const node of nodes) {
-    const raw = sourceOf.get(node) ?? node.nodeValue
+    const current = node.nodeValue
+    // React reuses text nodes for changing counters. A cached value such as the initial
+    // "Loading…" must not win over the current English dynamic value, or the observer would
+    // restore the loading label after the request has completed.
+    const cached = sourceOf.get(node)
+    // If the current value is exactly our translation of the cached source, keep the source.
+    // Otherwise React has supplied a new value and it must replace the cache.
+    const raw = cached && current === translateDynamic(cached, spanish) ? cached : current
     sourceOf.set(node, raw)
     const leading = raw.match(/^\s*/)?.[0] || ''
     const trailing = raw.match(/\s*$/)?.[0] || ''
