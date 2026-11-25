@@ -52,4 +52,11 @@ describe('the buddy', () => {
     expect(lineKey('proud', '2026-10-18', { action: 'finished', level: 2 })).toContain('2026-10-18:proud:finished')
     expect(fallbackLine('chill', '2026-10-18', {}, 'es')).toMatch(/^(Día|Tómatelo|Recuperar|Un día|Deja|Descansa|Tu objetivo|Trino)/)
   })
+
+  it('does not let the level context lock the same fallback line every day', () => {
+    const context = { action: 'planned', session: 'Legs', level: 6, goal: 'fitness' }
+    const first = fallbackLine('hyped', '2026-11-01', context, 'es')
+    const next = fallbackLine('hyped', '2026-11-02', { ...context, previousLine: first.replace('{2}', '6') }, 'es')
+    expect(first).not.toBe(next)
+  })
 })

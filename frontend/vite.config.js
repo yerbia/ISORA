@@ -7,6 +7,10 @@ import react from '@vitejs/plugin-react'
 import { lazyAssets, stampSw } from './scripts/sw-stamp.mjs'
 
 const backend = process.env.API_TARGET || 'http://127.0.0.1:3000'
+// The documented .env lives at the repository root (`cp .env.example .env`), while Vite's
+// project root is frontend/. Keep the two builds aligned so the mobile bundle receives the
+// public Supabase settings instead of silently falling back to the placeholder endpoint.
+const envDir = resolve(fileURLToPath(new URL('..', import.meta.url)))
 // The API refuses a state-changing request that a browser sent from anywhere other than its own
 // ORIGIN (the CSRF guard in api/server.js). The dev server is on a different port, so the page's
 // real Origin is not ORIGIN — modern browsers get through on Sec-Fetch-Site: same-origin, and
@@ -102,6 +106,7 @@ const appVersion = process.env.APP_BUILD ? `${pkgVersion}+${process.env.APP_BUIL
 
 export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(appVersion) },
+  envDir,
   plugins: [react(), umami, flavor, swStamp, catalogueMedia],
   base: './',
   server: {

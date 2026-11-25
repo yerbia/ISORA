@@ -35,7 +35,7 @@ import { getMediaStatus, subscribeMediaStatus, pendingRefCount } from '../lib/me
 import { limitsFrom, fmtMB, MB } from '../lib/media-limits.js'
 import { setRestAccent } from '../lib/rest-alert.js'
 import { CUSTOM, accentKey, adjustedIn, applyAccent, cleanHex, inkOn, isGrey, ACCENT_V } from '../lib/accent.js'
-import { checkForUpdate, downloadAndInstall, fetchChecksum, RELEASES_PAGE } from '../lib/update.js'
+import { checkForUpdate, downloadAndInstall, fetchChecksum, RELEASES_PAGE, WEB_APK_URL } from '../lib/update.js'
 import { forgetCoach } from '../lib/coach-api.js'
 import { REST_MAX, REST_PAUSE_MIN, REST_PAUSE_MAX, fmtRest, fmtDuration } from '../lib/duration.js'
 import { starterPlanSheet, confirmSheet, importFromApp, importFromHevy, equipmentProfileSheet, plateInventorySheet, dumbbellInventorySheet, menuSheet } from '../sheets.jsx'
@@ -856,8 +856,8 @@ export default function Settings({ page = null, find = null, via = null }) {
               accessory="chevron"
               onClick={() => (updateInfo?.hasUpdate ? onUpdateRowClick() : checkNow())} />
           : !PERSONAL && <Row icon="download" iconTint="var(--green)" title={t('Get the Android app')}
-              subtitle={t('Download the APK from Entren.ar releases')} accessory="chevron"
-              onClick={() => window.open(RELEASES_PAGE, '_blank', 'noopener')} />}
+              subtitle={t('Descarga el último APK de Entren.ar')} accessory="chevron"
+              onClick={() => window.open(WEB_APK_URL, '_blank', 'noopener')} />}
       </Section>
       {/* The version, where the support template tells people to look for it. On the phone
           build there is no address bar and no about box, so without this there is no way to tell

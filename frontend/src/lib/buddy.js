@@ -150,16 +150,25 @@ const contextTags = context => new Set([
   context?.goal ? 'goal' : null,
 ].filter(Boolean))
 const stableHash = value => [...String(value)].reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 7)
+const CONTEXT_WEIGHT = 120
+const renderedLine = (line, context) => String(line)
+  .replace('{0}', context.name || context.userName || 'friend')
+  .replace('{1}', context.session || 'Training')
+  .replace('{2}', String(context.level || 1))
 export function fallbackLine(mood, isoDate, context = {}, lang = 'en') {
   const list = String(lang).toLowerCase().startsWith('es') ? (LINES_ES[mood] || LINES_ES.chill) : (LINES[mood] || LINES.chill)
   const tags = contextTags(context)
+  const previous = String(context.previousLine || '').trim()
   const choices = list.map((_, i) => {
     const matches = (LINE_CONTEXT[mood] || LINE_CONTEXT.chill)[i].filter(tag => tags.has(tag)).length
     const seed = [isoDate, mood, context.action || '', context.session || '', context.record || '',
       context.streak || 0, context.level || 1, context.goal || '', i].join('|')
-    return { i, score: matches * 1000 + stableHash(seed) % 1000 }
+    return { i, score: matches * CONTEXT_WEIGHT + stableHash(seed) % 1000 }
   }).sort((a, b) => b.score - a.score)
-  return list[choices[0]?.i || 0]
+  // Context should influence the tone, not lock a levelled-up buddy to one line forever.
+  // Keep the daily choice stable across renders, while excluding yesterday's rendered line.
+  const choice = choices.find(({ i }) => !previous || (list[i] !== previous && renderedLine(list[i], context) !== previous)) || choices[0]
+  return list[choice?.i || 0]
 }
 export const lineKey = (mood, isoDate, context = {}) =>
   [isoDate, mood, context.action || '', context.session || '', context.record || '',

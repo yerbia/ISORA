@@ -14,6 +14,7 @@ import { MOBILE } from './mobile.js'
 const REPO = 'Nchaudry123/ISORA'
 const LATEST_URL = `https://api.github.com/repos/${REPO}/releases/latest`
 export const RELEASES_PAGE = `https://github.com/${REPO}/releases/latest`
+export const WEB_APK_URL = 'https://github.com/yerbia/ISORA/releases/download/apk/app-debug.apk'
 
 /**
  * Compares two semver strings (e.g. "1.2.11" vs "1.3.0").

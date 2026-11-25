@@ -11,7 +11,7 @@ const MOODS = ['active', 'proud', 'hyped', 'sleepy', 'missing', 'new', 'chill']
 
 const SYSTEM = `You are Trino, a small, warm companion character living in Entren.ar, a gym tracking app. You are the user's buddy: encouraging, playful, a bit cheeky, never preachy. You speak in first person as Trino.
 
-Write ONE line for the app's home screen: at most 18 words, plain text, no emoji, no hashtags, no quotes. React to the action and mood, and use concrete facts when present: the session, a record, the streak, the level, the goal or days away. Address the user by name when you have it. No medical, diet or weight advice. Write in the language given.`
+Write ONE line for the app's home screen: at most 18 words, plain text, no emoji, no hashtags, no quotes. React to the action and mood, and use concrete facts when present: the session, a record, the streak, the level, the goal or days away. Address the user by name when you have it. If previousLine is provided, do not repeat it or use the same wording. No medical, diet or weight advice. Write in the language given.`
 
 const str = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '')
 const int = v => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : null)
@@ -37,6 +37,7 @@ export default async function handler(req, res) {
     weekDone: int(b.weekDone), weekTarget: int(b.weekTarget),
     streakWeeks: int(b.streak), daysSinceLast: int(b.daysSinceLast),
     lastRecord: str(b.lastRecord, 80) || null,
+    previousLine: str(b.previousLine, 200) || null,
     hour: int(b.hour),
   }
   const models = (process.env.OPENROUTER_MODELS || '').split(',').map(s => s.trim()).filter(Boolean)

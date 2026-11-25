@@ -81,8 +81,9 @@ export function BuddyCard({ doneToday, plannedToday, todayName, facts = {} }) {
     goal: prof.goal || '',
   }
   const key = lineKey(mood, today, context)
+  const previousLine = bud.line?.key === key ? '' : bud.line?.text || ''
   const [talking, setTalking] = useState(false)
-  const fallback = fallbackLine(mood, today, context, getLang())
+  const fallback = fallbackLine(mood, today, { ...context, name: prof.name, previousLine }, getLang())
   const line = bud.line?.key === key ? bud.line.text : fallback
     .replace('{0}', prof.name || t('friend'))
     .replace('{1}', todayName || t('Training'))
@@ -98,9 +99,11 @@ export function BuddyCard({ doneToday, plannedToday, todayName, facts = {} }) {
         buddyName: bud.name, kind: bud.kind, level: lv.level, userName: prof.name, mood, lang: getLang(),
         today: todayName || (plannedToday ? '' : 'rest day'), goal: prof.goal, weekTarget: prof.weekTarget || null,
         action: context.action, session: context.session, record: context.record,
-        streak: context.streak, hour: new Date().getHours(), daysSinceLast, ...facts,
+        streak: context.streak, hour: new Date().getHours(), daysSinceLast, previousLine, ...facts,
       }),
-    }).then(r => (r.ok ? r.json() : null)).then(d => { if (d?.line) setBuddy({ line: { key, text: d.line } }) }).catch(() => {})
+    }).then(r => (r.ok ? r.json() : null)).then(d => {
+      if (d?.line && (!previousLine || String(d.line).trim() !== previousLine.trim())) setBuddy({ line: { key, text: d.line } })
+    }).catch(() => {})
   }, [key, bud.kind])
 
   // a new level: celebrate once, then remember it
