@@ -17,7 +17,14 @@ const API = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SECRET = crypto.randomBytes(32).toString('hex');
 const UID = 'u_nudge_1';
 const USERS = [{ id: UID, name: 'One', created: new Date().toISOString() }];
-const sub = { userId: UID, endpoint: 'https://localhost/x', keys: { p256dh: 'p', auth: 'a' }, created: new Date().toISOString() };
+const pushKeys = () => ({
+  p256dh: crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' }).publicKey
+    .export({ type: 'spki', format: 'der' }).subarray(-65).toString('base64url'),
+  auth: crypto.randomBytes(16).toString('base64url')
+});
+// A literal loopback address is rejected deterministically before any socket is opened. The key
+// material is valid, so this test exercises endpoint filtering rather than web-push validation.
+const sub = { userId: UID, endpoint: 'https://127.0.0.1/x', keys: pushKeys(), created: new Date().toISOString() };
 
 function mintSession(uid) {
   const payload = `${uid}:${Date.now() + 86400000}:0`;
@@ -38,7 +45,10 @@ async function startServer(t, subs = [sub]) {
   t.after(() => { child.kill('SIGKILL'); fs.rmSync(dataDir, { recursive: true, force: true }); });
   h.port = await boundPort(child, () => h.log);
   h.api = `http://127.0.0.1:${h.port}`;
-  h.write = state => fs.writeFileSync(path.join(dataDir, 'state-' + UID + '.json'), JSON.stringify(state));
+  let writeSeq = 0;
+  // The real server caches state by mtime and size. Direct fixture rewrites can otherwise look
+  // unchanged on a fast filesystem, leaving the tick on the previous case's state.
+  h.write = state => fs.writeFileSync(path.join(dataDir, 'state-' + UID + '.json'), JSON.stringify({ ...state, _testRevision: 'x'.repeat(++writeSeq) }));
   h.db = () => JSON.parse(fs.readFileSync(path.join(dataDir, 'db.json'), 'utf8'));
   return h;
 }
@@ -101,9 +111,12 @@ test('silent outside the evening, on a rest day, on a trained day, and when swit
   }
   assert.equal(h.db().users[0].lastNudge, undefined);
   // …and the same server does fire once the day really is a missed one
-  h.write(missedToday(eve));
-  await until(() => firings(h.log) > 0);
-  assert.equal(firings(h.log), 1, h.log);
+  // Use a fresh process here: the preceding matrix deliberately rewrites one state file through
+  // several cacheable shapes, while this assertion is about the positive nudge path itself.
+  const final = await startServer(t);
+  final.write(missedToday(eve));
+  await until(() => firings(final.log) > 0);
+  assert.equal(firings(final.log), 1, final.log);
 });
 
 test('no push subscription, or a workout on screen right now: no nudge', async t => {

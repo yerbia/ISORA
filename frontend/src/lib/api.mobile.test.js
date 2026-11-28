@@ -7,8 +7,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 vi.mock('./mobile.js', () => ({ MOBILE: true }))
 
 import { api, beacon, setRemoteAuth } from './api.js'
+import { supabase } from './supabase.js'
 
-afterEach(() => { vi.unstubAllGlobals(); setRemoteAuth('', null) })
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); setRemoteAuth('', null) })
 
 describe('api() on the phone build', () => {
   it('without a Supabase session it refuses with auth (401) and never calls fetch', async () => {
@@ -26,6 +27,17 @@ describe('api() on the phone build', () => {
     await expect(api('/api/data/rev')).resolves.toEqual({ rev: 3 })
     expect(fetch.mock.calls[0][0]).toBe('https://gym.example.com/api/data/rev')
     expect(fetch.mock.calls[0][1].headers.Authorization).toBe('Bearer TOKEN')
+  })
+
+  it('cloud, it talks to Entren.ar with the Supabase bearer token', async () => {
+    vi.spyOn(supabase.auth, 'getSession').mockResolvedValue({
+      data: { session: { access_token: 'SUPABASE-TOKEN', user: { id: 'u1' } } }, error: null
+    })
+    const fetch = vi.fn(async () => new Response(JSON.stringify({ enabled: true }), { status: 200, headers: { 'content-type': 'application/json' } }))
+    vi.stubGlobal('fetch', fetch)
+    await expect(api('/api/admin/coach')).resolves.toEqual({ enabled: true })
+    expect(fetch.mock.calls[0][0]).toBe('https://entren.ar/api/admin/coach')
+    expect(fetch.mock.calls[0][1].headers.Authorization).toBe('Bearer SUPABASE-TOKEN')
   })
 })
 

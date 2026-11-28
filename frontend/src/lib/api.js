@@ -9,6 +9,12 @@ export const IS_APPLE = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent)
 export const IS_ANDROID = /Android/.test(navigator.userAgent)
 export const BIO = IS_APPLE ? 'Face ID / Touch ID' : IS_ANDROID ? 'fingerprint or face unlock' : 'your fingerprint, face or PIN'
 export const VAULT = IS_APPLE ? 'iCloud Keychain' : IS_ANDROID ? 'Google Password Manager' : 'your password manager'
+// The cloud Android build has a real backend as well as its direct Supabase storage. Keep the
+// endpoint configurable for staging, but make the public Entren.ar deployment work without an
+// extra APK-specific setting. A legacy paired phone still wins through remoteBase below.
+export const CLOUD_API_URL = MOBILE
+  ? String(import.meta.env.VITE_CLOUD_API_URL || 'https://entren.ar').trim().replace(/\/+$/, '')
+  : ''
 // The same phrases in the UI language. They go into translated sentences ("confirm with {0}"),
 // so the English constants above left an English phrase in the middle of every other language.
 // Functions, not constants: the pack is loaded after this module is.
@@ -113,23 +119,26 @@ const failure = (message, code, status) => Object.assign(new Error(message), { c
 
 export async function api(path, opts) {
   const { timeout, ...init } = opts || {}
-  if (MOBILE && !remoteBase) return directSupabaseApi(path, init)
-  // A phone with no server to talk to: local mode, or a pairing that is gone. There is no
-  // relative URL to fall back on here — the WebView's own origin is Capacitor's local asset
-  // server, which answers ANY path, PUT included, with index.html and a 200, so a push "landed"
-  // there and the change was marked as synced while the server never saw it. status 0, not
-  // undefined: this is not "offline", and the store must not show it as such.
-  if (MOBILE && !remoteBase) throw failure(t('This phone is not connected to a server.'), 'not-paired', 0)
+  // A cloud phone now uses the same API surface as the web app. Direct Supabase remains the
+  // fallback for a development build that explicitly clears CLOUD_API_URL; production Android
+  // uses Entren.ar so admin and Coach routes reach the server that owns their configuration.
+  if (MOBILE && !remoteBase && !CLOUD_API_URL) return directSupabaseApi(path, init)
   const headers = Object.assign({ 'Content-Type': 'application/json' }, init.headers, remoteHeaders())
   if (!remoteBase && !headers.Authorization) {
     const { data } = await supabase.auth.getSession()
     if (data.session?.access_token) headers.Authorization = `Bearer ${data.session.access_token}`
+    else if (MOBILE) throw failure(t('You need to sign in first.'), 'auth', 401)
   }
   // A paired phone has an absolute base of its own; everyone else is relative to where the app
   // is served, so a subpath deployment reaches its own API instead of the proxy's root.
-  const url = remoteBase ? remoteBase + path : appBase().replace(/\/$/, '') + path
+  const base = remoteBase || (MOBILE ? CLOUD_API_URL : appBase().replace(/\/$/, ''))
+  const url = base + path
   const ms = timeout != null ? timeout : (init.method || 'GET').toUpperCase() === 'GET' ? TIMEOUT_GET_MS : TIMEOUT_MS
-  return request(url, Object.assign({}, init, { headers }), ms)
+  const answer = await request(url, Object.assign({}, init, { headers }), ms)
+  // The server route clears its legacy cookie, while cloud Android authenticates with Supabase.
+  // Sign out of both layers so a cloud logout cannot leave the mobile session alive.
+  if (MOBILE && !remoteBase && path === '/api/logout') await supabase.auth.signOut()
+  return answer
 }
 
 async function directSupabaseSession() {
@@ -222,8 +231,17 @@ export function beacon(path, body) {
    base api() uses and carry the paired phone's Bearer token the same way (the server's CORS
    answer allows it for GET and PUT); both refuse to run on a phone without a server, like api(). */
 
-const mediaUrl = path => (remoteBase ? remoteBase + path : appBase().replace(/\/$/, '') + path)
-const mediaHeaders = remoteHeaders
+const mediaBase = () => remoteBase || (MOBILE ? CLOUD_API_URL : appBase().replace(/\/$/, ''))
+const mediaUrl = path => mediaBase() + path
+const mediaHeaders = async () => {
+  const headers = remoteHeaders()
+  if (!remoteBase && MOBILE && CLOUD_API_URL && !headers.Authorization) {
+    const { data } = await supabase.auth.getSession()
+    if (data.session?.access_token) headers.Authorization = `Bearer ${data.session.access_token}`
+    else throw failure(t('You need to sign in first.'), 'auth', 401)
+  }
+  return headers
+}
 const notPaired = () => failure(t('This phone is not connected to a server.'), 'not-paired', 0)
 const timedOut = () => failure(t('The server did not answer in time.'), 'timeout')
 
@@ -236,7 +254,7 @@ const timedOut = () => failure(t('The server did not answer in time.'), 'timeout
  * Errors carry { status, code } like api()'s: the server's code on a refusal (media-missing).
  */
 export async function apiBlob(path, { expectSize, idleMs = 30000, fetchImpl = globalThis.fetch } = {}) {
-  if (MOBILE && !remoteBase) throw notPaired()
+  if (MOBILE && !remoteBase && !CLOUD_API_URL) throw notPaired()
   const max = typeof expectSize === 'number' && expectSize >= 0 ? expectSize + 1024 : Infinity
   const ctl = typeof AbortController === 'function' ? new AbortController() : null
   let timer = null
@@ -252,7 +270,7 @@ export async function apiBlob(path, { expectSize, idleMs = 30000, fetchImpl = gl
   const orStall = p => { p.catch(() => {}); return Promise.race([p, stall]) }
   arm()
   try {
-    const r = await orStall(fetchImpl(mediaUrl(path), { headers: mediaHeaders(), cache: 'no-store', ...(ctl ? { signal: ctl.signal } : {}) }))
+    const r = await orStall(fetchImpl(mediaUrl(path), { headers: await mediaHeaders(), cache: 'no-store', ...(ctl ? { signal: ctl.signal } : {}) }))
     if (!r.ok) {
       let body = null
       try { body = await r.json() } catch { /* not JSON: a proxy's page */ }
@@ -292,39 +310,41 @@ export async function apiBlob(path, { expectSize, idleMs = 30000, fetchImpl = gl
  * `idleMs` without progress; no status at all when the network failed.
  */
 export function apiUpload(path, blob, mime, { onProgress, idleMs = 60000, XHR = globalThis.XMLHttpRequest } = {}) {
-  if (MOBILE && !remoteBase) return Promise.reject(notPaired())
+  if (MOBILE && !remoteBase && !CLOUD_API_URL) return Promise.reject(notPaired())
   return new Promise((resolve, reject) => {
     const xhr = new XHR()
     let timer = null
     let idle = false
     const arm = () => { clearTimeout(timer); timer = setTimeout(() => { idle = true; xhr.abort() }, idleMs) }
-    xhr.open('PUT', mediaUrl(path))
-    xhr.setRequestHeader('Content-Type', mime)
-    for (const [k, v] of Object.entries(mediaHeaders())) xhr.setRequestHeader(k, v)
-    if (xhr.upload) xhr.upload.onprogress = e => { arm(); if (onProgress && e.lengthComputable) onProgress(e.loaded, e.total) }
-    xhr.onprogress = arm
-    xhr.onload = () => {
-      clearTimeout(timer)
-      let body = null
-      try { body = JSON.parse(xhr.responseText) } catch { /* not JSON */ }
-      if (body && typeof body !== 'object') body = null
-      if (xhr.status >= 200 && xhr.status < 300) {
-        if (body) resolve(body)
-        else reject(failure(t('The server answered with something other than ISORA data.'), 'bad-response', xhr.status))
-        return
+    mediaHeaders().then(headers => {
+      xhr.open('PUT', mediaUrl(path))
+      xhr.setRequestHeader('Content-Type', mime)
+      for (const [k, v] of Object.entries(headers)) xhr.setRequestHeader(k, v)
+      if (xhr.upload) xhr.upload.onprogress = e => { arm(); if (onProgress && e.lengthComputable) onProgress(e.loaded, e.total) }
+      xhr.onprogress = arm
+      xhr.onload = () => {
+        clearTimeout(timer)
+        let body = null
+        try { body = JSON.parse(xhr.responseText) } catch { /* not JSON */ }
+        if (body && typeof body !== 'object') body = null
+        if (xhr.status >= 200 && xhr.status < 300) {
+          if (body) resolve(body)
+          else reject(failure(t('The server answered with something other than ISORA data.'), 'bad-response', xhr.status))
+          return
+        }
+        if (xhr.status === 413 && !body) { reject(failure('HTTP 413', 'proxy-too-large', 413)); return }
+        const e = Object.assign(new Error((body && body.error) || 'HTTP ' + xhr.status), { status: xhr.status, code: (body && body.code) || 'http', data: body || {} })
+        if (xhr.status === 429) {
+          const header = Number(xhr.getResponseHeader && xhr.getResponseHeader('Retry-After'))
+          e.retryAfter = Number(body && body.retryAfter) || (Number.isFinite(header) && header > 0 ? header : 60)
+        }
+        reject(e)
       }
-      if (xhr.status === 413 && !body) { reject(failure('HTTP 413', 'proxy-too-large', 413)); return }
-      const e = Object.assign(new Error((body && body.error) || 'HTTP ' + xhr.status), { status: xhr.status, code: (body && body.code) || 'http', data: body || {} })
-      if (xhr.status === 429) {
-        const header = Number(xhr.getResponseHeader && xhr.getResponseHeader('Retry-After'))
-        e.retryAfter = Number(body && body.retryAfter) || (Number.isFinite(header) && header > 0 ? header : 60)
-      }
-      reject(e)
-    }
-    xhr.onerror = () => { clearTimeout(timer); reject(Object.assign(new Error('network'), { code: 'network' })) }
-    xhr.onabort = () => { clearTimeout(timer); reject(idle ? timedOut() : Object.assign(new Error('aborted'), { code: 'network' })) }
-    arm()
-    xhr.send(blob)
+      xhr.onerror = () => { clearTimeout(timer); reject(Object.assign(new Error('network'), { code: 'network' })) }
+      xhr.onabort = () => { clearTimeout(timer); reject(idle ? timedOut() : Object.assign(new Error('aborted'), { code: 'network' })) }
+      arm()
+      xhr.send(blob)
+    }).catch(reject)
   })
 }
 

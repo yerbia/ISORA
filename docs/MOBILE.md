@@ -21,11 +21,14 @@ openGym ships in two flavors from the same codebase:
 
 The mobile flavor uses Supabase Auth and the `workout_states` table when it is built with
 `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. Android stores the Supabase session in
-Android Keystore-backed encrypted preferences through `@aparajita/capacitor-secure-storage`;
-it never uses the old bearer-token pairing as the primary login path. The state is still
-mirrored into `opengym-state.json` in the app's private data directory on every change, so
-an offline edit is kept until connectivity returns. Backups go out through the OS share
-sheet instead of a browser download.
+Android Keystore-backed encrypted preferences through `@aparajita/capacitor-secure-storage`.
+The cloud build sends the authenticated API requests to `VITE_CLOUD_API_URL` (default
+`https://entren.ar`), including `/api/config`, the admin dashboard and all Coach routes; the
+server validates the same Supabase bearer token and loads the administrator's configured Coach.
+The old bearer-token pairing remains available as the primary API for self-hosted installations
+that opt into “Connect to my server”. The state is still mirrored into `opengym-state.json` in
+the app's private data directory on every change, so an offline edit is kept until connectivity
+returns. Backups go out through the OS share sheet instead of a browser download.
 
 ### Signing in on Android
 

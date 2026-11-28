@@ -397,11 +397,14 @@ test('a workout\'s photos and videos never reach the payload', () => {
 test('a session note reaches the model whole, bounded only at the app\'s own cap', () => {
   const S = sampleState();
   const whole = 'It is confusing whether the weight is total or per dumbbell. '.repeat(8).trim();   // 487 chars: past the old 300, within the cap
+  // Keep both sessions inside the rolling 12-week review window. Fixed historical dates made this
+  // test disappear from the payload as time moved on, so the assertion depended on the calendar.
+  const recentDay = daysAgo => new Date(Date.now() - daysAgo * 86400000).toISOString().slice(0, 10);
   const mk = (d, note) => ({
     id: 'w' + d, d, name: 'A', start: 0, end: 60000, prs: [], note,
     entries: [{ id: '0001', target: { sets: 3, reps: 10, weight: 20 }, sets: [{ w: 20, r: 10, done: true }] }]
   });
-  S.workouts = [mk('2026-09-02', whole), mk('2026-09-03', 'y'.repeat(payload.NOTE_MAX + 100))];   // only a document edited outside the app carries the second
+  S.workouts = [mk(recentDay(7), whole), mk(recentDay(6), 'y'.repeat(payload.NOTE_MAX + 100))];   // only a document edited outside the app carries the second
   const p = payload.build(S, { handle: handleFor('u1'), kind: 'review' });
   const [full, edited] = p.window.workouts;
   assert.equal(full.compact, undefined, 'both sessions are in full detail');

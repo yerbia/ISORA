@@ -379,6 +379,9 @@ async function sendPush(userId, payload, deviceId) {
       if (bad) {
         console.error('push endpoint refused', userId, bad);
         db.subs = db.subs.filter(s => s.endpoint !== sub.endpoint); dirty = true;
+        // The row is removed permanently, so callers such as the nudge tick can record the
+        // attempt and avoid retrying the same local/invalid subscription every interval.
+        permanentFailures++;
         continue;
       }
       // urgency 'high' is the one lever we have over delivery speed — iOS/Android throttle

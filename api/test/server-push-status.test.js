@@ -22,7 +22,12 @@ function mintSession(uid) {
 }
 const cookie = { Cookie: `gymsid=${mintSession('u_test_1')}` };
 const other = { Cookie: `gymsid=${mintSession('u_test_2')}` };
-const keys = { p256dh: 'p', auth: 'a' };
+const pushKeys = () => ({
+  p256dh: crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' }).publicKey
+    .export({ type: 'spki', format: 'der' }).subarray(-65).toString('base64url'),
+  auth: crypto.randomBytes(16).toString('base64url')
+});
+const keys = pushKeys();
 
 async function startServer(t, subs = []) {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gym-pushstatus-'));
@@ -61,12 +66,13 @@ test('status tells whether the server holds the endpoint; subscribe is an upsert
   assert.equal(first.deviceId, 'dev_aaaaaaaa');
 
   await new Promise(r => setTimeout(r, 20));
-  assert.equal((await post(h, '/api/push/subscribe', { subscription: { endpoint, keys: { p256dh: 'p2', auth: 'a2' } }, deviceId: 'dev_bbbbbbbb' })).status, 200);
+  const keys2 = pushKeys();
+  assert.equal((await post(h, '/api/push/subscribe', { subscription: { endpoint, keys: keys2 }, deviceId: 'dev_bbbbbbbb' })).status, 200);
   const subs = readDb(h).subs;
   assert.equal(subs.length, 1, 'same endpoint sent again is one row');
   assert.equal(subs[0].created, first.created, 'created survives the re-send');
   assert.equal(subs[0].deviceId, 'dev_bbbbbbbb');
-  assert.deepEqual(subs[0].keys, { p256dh: 'p2', auth: 'a2' });
+  assert.deepEqual(subs[0].keys, keys2);
 
   // a device id that is not a short token is dropped, not stored
   assert.equal((await post(h, '/api/push/subscribe', { subscription: { endpoint: 'https://push.example/two', keys }, deviceId: { evil: true } })).status, 200);
@@ -80,7 +86,7 @@ test('status tells whether the server holds the endpoint; subscribe is an upsert
 // the owner's browser re-sends the same subscription with its id and the row is repaired in place.
 test('a row stored without a device id: status says so, and the owner re-sending it gives it one', async t => {
   const endpoint = 'https://push.example/legacy';
-  const browserKeys = { p256dh: 'p-legacy', auth: 'a-legacy' };
+  const browserKeys = pushKeys();
   const created = '2025-01-01T00:00:00.000Z';
   const h = await startServer(t, [{ userId: 'u_test_1', endpoint, keys: browserKeys, created }]);
 
@@ -99,7 +105,7 @@ test('a row stored without a device id: status says so, and the owner re-sending
 // the row already has.
 test('a re-send without a usable device id keeps the id the row has', async t => {
   const endpoint = 'https://push.example/kept';
-  const browserKeys = { p256dh: 'p-kept', auth: 'a-kept' };
+  const browserKeys = pushKeys();
   const created = '2025-03-03T00:00:00.000Z';
   const h = await startServer(t, [{ userId: 'u_test_1', endpoint, keys: browserKeys, deviceId: 'dev_phone000', created }]);
 

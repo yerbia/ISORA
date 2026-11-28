@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { api, setRemoteAuth, bootstrapSupabaseSession } from '../lib/api.js'
+import { api, CLOUD_API_URL, setRemoteAuth, bootstrapSupabaseSession } from '../lib/api.js'
 import { SUPABASE_URL } from '../lib/supabase.js'
 import { initSupabaseMobileAuth } from '../lib/supabase-mobile.js'
 import { localTZ } from '../lib/format.js'
@@ -1897,7 +1897,9 @@ export const useStore = create((set, get) => {
         await loadCfAccess({ pairedBase: remote?.mode === 'remote' ? remote.base : '' })
         set({ coachLocal: coachDeviceSettings(await loadCoachDevice()) })
         if (sbSession?.access_token) {
-          setSync({ server: SUPABASE_URL || null })
+          // Cloud Android talks to the Entren.ar API for auth, state and Coach routes. Supabase
+          // remains the durable store behind that API, but it is not the app's API endpoint.
+          setSync({ server: CLOUD_API_URL || SUPABASE_URL || null })
           await restoreFromMirror({ user: { id: sbSession.user.id } })
           try {
             const me = await api('/api/me')
